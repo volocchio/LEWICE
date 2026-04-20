@@ -43,7 +43,12 @@ def run_lewice(inp_file, xyd_file, work_dir=None, timeout=300):
     if os.name == "nt":
         command = [exe]
     else:
-        wine_cmd = shutil.which("wine") or shutil.which("wine64") or "wine64"
+        wine_cmd = (
+            shutil.which("wine")
+            or shutil.which("wine64")
+            or ("/usr/lib/wine/wine64" if os.path.exists("/usr/lib/wine/wine64") else None)
+            or "wine64"
+        )
         command = [wine_cmd, exe]
 
     start = time.time()
