@@ -38,10 +38,14 @@ def run_lewice(inp_file, xyd_file, work_dir=None, timeout=300):
     # LEWICE reads input interactively: first the .inp path, then the .xyd path
     input_text = f"{inp_file}\n{xyd_file}\nY\n"
 
+    # LEWICE is a Windows executable. On Linux hosts (e.g., VPS containers),
+    # run it through Wine; on Windows, run it directly.
+    command = [exe] if os.name == "nt" else ["wine", exe]
+
     start = time.time()
     try:
         result = subprocess.run(
-            [exe],
+            command,
             input=input_text,
             capture_output=True,
             text=True,

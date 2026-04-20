@@ -1,7 +1,12 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    WINEDEBUG=-all
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends wine64 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
