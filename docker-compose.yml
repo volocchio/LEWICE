@@ -1,0 +1,15 @@
+services:
+  lewice-studio:
+    container_name: lewice_studio
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8518:8501"
+    restart: unless-stopped
+    networks:
+      - caddy-net
+
+networks:
+  caddy-net:
+    external: true

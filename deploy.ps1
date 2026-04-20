@@ -28,8 +28,21 @@ if (-not $NoPush) {
     git push
 }
 
-$remoteCmd = "set -e; mkdir -p '$RemoteRepoPath'; if [ ! -d '$RemoteRepoPath/.git' ]; then git clone git@github.com:volocchio/LEWICE.git '$RemoteRepoPath'; fi; cd '$RemoteRepoPath'; git fetch origin; git reset --hard origin/master; /usr/local/bin/sync-and-update-portal.sh"
+$remoteCmd = @(
+    "set -e",
+    "mkdir -p '$RemoteRepoPath'",
+    "if [ ! -d '$RemoteRepoPath/.git' ]; then git clone git@github.com:volocchio/LEWICE.git '$RemoteRepoPath'; fi",
+    "cd '$RemoteRepoPath'",
+    "git fetch origin",
+    "git reset --hard origin/master",
+    "docker compose build --no-cache",
+    "docker compose up -d",
+    "if grep -q 'lewice.voloaltro.tech' /etc/caddy/Caddyfile; then perl -0777 -i -pe 's#lewice\\.voloaltro\\.tech\\s*\\{[^}]*\\}#lewice.voloaltro.tech {\\n\\treverse_proxy 127.0.0.1:8518\\n}#s' /etc/caddy/Caddyfile; else printf '\nlewice.voloaltro.tech {\n\treverse_proxy 127.0.0.1:8518\n}\n' >> /etc/caddy/Caddyfile; fi",
+    "caddy fmt --overwrite /etc/caddy/Caddyfile",
+    "systemctl reload caddy",
+    "/usr/local/bin/sync-and-update-portal.sh"
+) -join '; '
 
-wsl ssh -i $SshKey "$VpsUser@$VpsHost" $remoteCmd
+wsl ssh -i $SshKey "$VpsUser@$VpsHost" "bash -lc \"$remoteCmd\""
 
 Write-Host 'Deploy completed.' -ForegroundColor Green
