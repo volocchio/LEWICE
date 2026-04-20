@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY studio /app/studio
 COPY lewice.exe /app/lewice.exe
+RUN chmod 755 /app/lewice.exe
 
 EXPOSE 8501
 
