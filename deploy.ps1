@@ -50,6 +50,7 @@ systemctl reload caddy
 /usr/local/bin/sync-and-update-portal.sh
 "@
 
-$remoteScript | wsl ssh -i $SshKey "$VpsUser@$VpsHost" "bash -s"
+$remoteScriptLf = $remoteScript -replace "`r", ""
+$remoteScriptLf | wsl ssh -i $SshKey "$VpsUser@$VpsHost" "bash -s"
 
 Write-Host 'Deploy completed.' -ForegroundColor Green
