@@ -90,7 +90,7 @@ with tab1:
             height=400, margin=dict(l=40, r=40, t=30, b=40),
             title=f"{airfoil_choice} — {len(coords)} points"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         col1, col2, col3 = st.columns(3)
         col1.metric("Points", len(coords))
@@ -113,7 +113,7 @@ with tab1:
             fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines",
                                      line=dict(color="#1a73e8", width=2)))
             fig.update_layout(yaxis=dict(scaleanchor="x", scaleratio=1), height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             st.metric("Points", len(coords))
         else:
             st.info("Upload a .xyd file to preview the airfoil geometry.")
@@ -161,7 +161,6 @@ with tab3:
     if st.button("Run Single Case", disabled=not exe_exists, type="primary"):
         st.info("Running LEWICE... this typically takes 5-30 seconds per case.")
         with st.spinner("Simulating ice accretion..."):
-            # Write temp input and geometry files
             tmp_dir = tempfile.mkdtemp(prefix="lewice_studio_")
             inp_path = os.path.join(tmp_dir, "case.inp")
             xyd_path = os.path.join(tmp_dir, "case.xyd")
@@ -181,29 +180,103 @@ with tab3:
 
             if result["status"] == "success":
                 st.success(f"LEWICE completed in {result['elapsed_seconds']}s")
-                st.text(result.get("stdout", "")[:2000])
+                st.session_state["last_run_dir"] = tmp_dir
+                st.session_state["last_run_xyd"] = xyd_path
             else:
                 st.error(f"LEWICE failed: {result.get('message', result.get('stderr', 'Unknown error'))}")
 
     st.divider()
-    st.subheader("Ice Shape Visualization (Demo)")
-    st.caption("After running LEWICE, ice shapes will be plotted here overlaid on the clean airfoil.")
+    st.subheader("Ice Shape Visualization")
 
-    # Demo placeholder with clean airfoil
-    if airfoil_choice != "Upload Custom .xyd":
-        designation = COMMON_AIRFOILS[airfoil_choice]
-        clean = naca4(designation, n_points=80)
-        fig2 = go.Figure()
+    # Determine which data to show: last run > demo case 1 > clean only
+    demo_xyd = os.path.join(os.path.dirname(__file__), "..", "Inputs", "case1.xyd")
+    demo_ice = os.path.join(os.path.dirname(__file__), "test_run", "case1", "final1.dat")
+    run_dir = st.session_state.get("last_run_dir", None)
+
+    clean_plot = None
+    ice_plot = None
+    plot_title = ""
+    max_thick_display = 0.0
+
+    if run_dir and os.path.isfile(os.path.join(run_dir, "final1.dat")):
+        # Show results from latest run
+        run_xyd = st.session_state.get("last_run_xyd", None)
+        if run_xyd and os.path.isfile(run_xyd):
+            clean_plot = parse_clean_airfoil(run_xyd)
+        ice_plot = parse_ice_shape(os.path.join(run_dir, "final1.dat"))
+        plot_title = "LEWICE Run Result — Ice Shape Overlay"
+        st.caption("Showing results from latest LEWICE run.")
+    elif os.path.isfile(demo_ice):
+        # Show demo Case 1 data
+        clean_plot = parse_clean_airfoil(demo_xyd)
+        ice_plot = parse_ice_shape(demo_ice)
+        plot_title = "Demo — NASA Case 1 Validation (AOA 4.5, -4.85C, 0.54 g/m3, 20um)"
+        st.caption("Showing NASA LEWICE Case 1 validation data. Run your own case to replace.")
+    else:
+        # No ice data available — show clean airfoil only
+        if airfoil_choice != "Upload Custom .xyd":
+            designation = COMMON_AIRFOILS[airfoil_choice]
+            clean_plot = naca4(designation, n_points=80)
+        plot_title = "Clean Airfoil (no ice data yet — run LEWICE or add demo data)"
+        st.caption("Run LEWICE to generate ice shape data.")
+
+    # Build the plot
+    fig2 = go.Figure()
+    if clean_plot:
         fig2.add_trace(go.Scatter(
-            x=[c[0] for c in clean], y=[c[1] for c in clean],
-            mode="lines", name="Clean Airfoil", line=dict(color="#1a73e8", width=2)
+            x=[c[0] for c in clean_plot], y=[c[1] for c in clean_plot],
+            mode="lines", name="Clean Airfoil",
+            line=dict(color="#6699CC", width=1.5)
         ))
-        fig2.update_layout(
-            xaxis_title="x/c", yaxis_title="y/c",
-            yaxis=dict(scaleanchor="x", scaleratio=1),
-            height=400, title="Ice Shape Overlay (run LEWICE to populate)"
+    if ice_plot:
+        fig2.add_trace(go.Scatter(
+            x=[c[0] for c in ice_plot], y=[c[1] for c in ice_plot],
+            mode="lines", name="Iced Airfoil",
+            line=dict(color="#C8A84E", width=2.5)
+        ))
+        min_x_ice = min(c[0] for c in ice_plot)
+        max_thick_display = abs(min_x_ice) * chord * 1000
+
+    fig2.update_layout(
+        xaxis_title="x/c", yaxis_title="y/c",
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        height=450, title=plot_title,
+        plot_bgcolor="#0B1A2E", paper_bgcolor="#0B1A2E",
+        font=dict(color="#CCCCCC"),
+        legend=dict(bgcolor="rgba(0,0,0,0)"),
+    )
+    st.plotly_chart(fig2, width="stretch")
+
+    # Metrics row
+    if ice_plot:
+        mc1, mc2, mc3, mc4 = st.columns(4)
+        ice_type_run = _classify_ice(temp_c, lwc, mvd)
+        risk_run, _ = _assess_risk(max_thick_display)
+        mc1.metric("Max Ice Thickness", f"{max_thick_display:.1f} mm")
+        mc2.metric("Ice Type", ice_type_run)
+        mc3.metric("Risk", risk_run)
+        mc4.metric("Ice Points", len(ice_plot))
+
+    # LE detail zoom
+    if ice_plot and clean_plot:
+        st.subheader("Leading Edge Detail")
+        fig3 = go.Figure()
+        fig3.add_trace(go.Scatter(
+            x=[c[0] for c in clean_plot], y=[c[1] for c in clean_plot],
+            mode="lines", name="Clean", line=dict(color="#6699CC", width=1.5)
+        ))
+        fig3.add_trace(go.Scatter(
+            x=[c[0] for c in ice_plot], y=[c[1] for c in ice_plot],
+            mode="lines", name="Iced", line=dict(color="#C8A84E", width=2.5),
+            fill="toself", fillcolor="rgba(200,168,78,0.1)"
+        ))
+        fig3.update_layout(
+            xaxis=dict(range=[-0.05, 0.20]), yaxis=dict(range=[-0.08, 0.08], scaleanchor="x"),
+            height=400, title="Leading Edge — Ice Accretion Detail",
+            plot_bgcolor="#0B1A2E", paper_bgcolor="#0B1A2E",
+            font=dict(color="#CCCCCC"), legend=dict(bgcolor="rgba(0,0,0,0)"),
         )
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig3, width="stretch")
 
 # ---- Tab 4: Report ----
 with tab4:
