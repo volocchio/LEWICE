@@ -1,0 +1,367 @@
+mkdir output
+mkdir output\lewice
+mkdir output\thick
+
+copy examples\case1.inp input.inp
+copy examples\case1.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case1
+mkdir output\thick\case1
+move *.dat output\lewice\case1
+move fort.* output\lewice\case1
+copy output\lewice\case1\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case1
+
+copy examples\case2.inp input.inp
+copy examples\case2.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case2
+mkdir output\thick\case2
+move *.dat output\lewice\case2
+move fort.* output\lewice\case2
+copy output\lewice\case2\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case2
+
+copy examples\case3.inp input.inp
+copy examples\case3.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case3
+mkdir output\thick\case3
+move *.dat output\lewice\case3
+move fort.* output\lewice\case3
+copy output\lewice\case3\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case3
+
+copy examples\case4.inp input.inp
+copy examples\case4.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case4
+mkdir output\thick\case4
+move *.dat output\lewice\case4
+move fort.* output\lewice\case4
+copy output\lewice\case4\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case4
+
+copy examples\case5.inp input.inp
+copy examples\case5.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case5
+mkdir output\thick\case5
+move *.dat output\lewice\case5
+move fort.* output\lewice\case5
+copy output\lewice\case5\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case5
+
+copy examples\case6.inp input.inp
+copy examples\case6.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case6
+mkdir output\thick\case6
+move *.dat output\lewice\case6
+move fort.* output\lewice\case6
+copy output\lewice\case6\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case6
+
+copy examples\case7.inp input.inp
+copy examples\case7.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case7
+mkdir output\thick\case7
+move *.dat output\lewice\case7
+move fort.* output\lewice\case7
+copy output\lewice\case7\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case7
+
+copy examples\case8.inp input.inp
+copy examples\case8.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case8
+mkdir output\thick\case8
+move *.dat output\lewice\case8
+move fort.* output\lewice\case8
+copy output\lewice\case8\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case8
+
+copy examples\case9.inp input.inp
+copy examples\case9.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case9
+mkdir output\thick\case9
+move *.dat output\lewice\case9
+move fort.* output\lewice\case9
+copy output\lewice\case9\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case9
+
+copy examples\case10.inp input.inp
+copy examples\case10.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case10
+mkdir output\thick\case10
+move *.dat output\lewice\case10
+move fort.* output\lewice\case10
+copy output\lewice\case10\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case10
+
+copy examples\case10a.inp input.inp
+LEWICE < lewice.inp
+mkdir output\lewice\case10a
+mkdir output\thick\case10a
+move *.dat output\lewice\case10a
+move fort.* output\lewice\case10a
+copy output\lewice\case10a\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case10a
+
+copy examples\case11.inp input.inp
+copy examples\case11a.xyd geom1.xyd
+copy examples\case11b.xyd geom2.xyd
+copy examples\case11b.xyd geom3.xyd
+LEWICE < lewice11.inp
+mkdir output\lewice\case11
+mkdir output\thick\case11a
+mkdir output\thick\case11b
+mkdir output\thick\case11c
+move *.dat output\lewice\case11
+move fort.* output\lewice\case11
+copy output\lewice\case11\final1.dat final1.dat
+thick < thick1.inp
+move *.dat output\thick\case11a
+copy output\lewice\case11\final2.dat final2.dat
+thick < thick2.inp
+move *.dat output\thick\case11b
+copy output\lewice\case11\final3.dat final3.dat
+thick < thick3.inp
+move *.dat output\thick\case11c
+
+copy examples\case12.inp input.inp
+copy examples\case12.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case12
+mkdir output\thick\case12
+move *.dat output\lewice\case12
+move fort.* output\lewice\case12
+copy output\lewice\case12\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case12
+
+copy examples\case12a.inp input.inp
+LEWICE < lewice.inp
+mkdir output\lewice\case12a
+mkdir output\thick\case12a
+move *.dat output\lewice\case12a
+move fort.* output\lewice\case12a
+copy output\lewice\case12a\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case12a
+
+copy examples\case13.inp input.inp
+copy examples\case13d.inp deice.inp
+copy examples\hi13.inp hi.inp
+copy examples\case13.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case13
+mkdir output\thick\case13
+move *.dat output\lewice\case13
+move fort.* output\lewice\case13
+copy output\lewice\case13\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case13
+
+copy examples\case14.inp input.inp
+copy examples\case14d.inp deice.inp
+copy examples\case14.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case14
+mkdir output\thick\case14
+move *.dat output\lewice\case14
+move fort.* output\lewice\case14
+copy output\lewice\case14\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case14
+
+copy examples\case15.inp input.inp
+copy examples\case15d.inp deice.inp
+copy examples\case15.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case15
+mkdir output\thick\case15
+move *.dat output\lewice\case15
+move fort.* output\lewice\case15
+copy output\lewice\case15\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case15
+
+copy examples\case16.inp input.inp
+copy examples\case16d.inp deice.inp
+copy examples\case16.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case16
+mkdir output\thick\case16
+move *.dat output\lewice\case16
+move fort.* output\lewice\case16
+copy output\lewice\case16\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case16
+
+copy examples\case17.inp input.inp
+copy examples\case17d.inp deice.inp
+copy examples\case17.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case17
+mkdir output\thick\case17
+move *.dat output\lewice\case17
+move fort.* output\lewice\case17
+copy output\lewice\case17\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case17
+
+copy examples\case18.inp input.inp
+copy examples\case18d.inp deice.inp
+copy examples\case18.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case18
+mkdir output\thick\case18
+move *.dat output\lewice\case18
+move fort.* output\lewice\case18
+copy output\lewice\case18\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case18
+
+copy examples\case19.inp input.inp
+copy examples\case19d.inp deice.inp
+copy examples\case19.xyd geom.xyd
+copy examples\hi19.inp hi.inp
+LEWICE < lewice.inp
+mkdir output\lewice\case19
+mkdir output\thick\case19
+move *.dat output\lewice\case19
+move fort.* output\lewice\case19
+copy output\lewice\case19\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case19
+
+copy examples\case20.inp input.inp
+copy examples\case20d.inp deice.inp
+copy examples\case20.xyd geom.xyd
+LEWICE < lewice.inp
+mkdir output\lewice\case20
+mkdir output\thick\case20
+move *.dat output\lewice\case20
+move fort.* output\lewice\case20
+copy output\lewice\case20\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case20
+
+copy examples\case21-1.inp input.inp
+copy examples\case21d-1.inp deice.inp
+copy examples\case21-1.xyd geom.xyd
+copy examples\rflow21-1.inp rflow.inp
+copy examples\rbeta21-1.inp rbeta.inp
+copy examples\rhtc21-1.inp rhtc.inp
+copy examples\stream21-1.inp stream.inp
+LEWICE < lewice.inp
+mkdir output\lewice\case21-1
+mkdir output\thick\case21-1
+move *.dat output\lewice\case21-1
+move fort.* output\lewice\case21-1
+copy output\lewice\case21-1\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case21-1
+
+copy examples\case21-2.inp input.inp
+copy examples\case21d-2.inp deice.inp
+copy examples\case21-2.xyd geom.xyd
+copy examples\rflow21-2.inp rflow.inp
+copy examples\rbeta21-2.inp rbeta.inp
+copy examples\rhtc21-2.inp rhtc.inp
+copy examples\stream21-2.inp stream.inp
+LEWICE < lewice.inp
+mkdir output\lewice\case21-2
+mkdir output\thick\case21-2
+move *.dat output\lewice\case21-2
+move fort.* output\lewice\case21-2
+copy output\lewice\case21-2\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case21-2
+
+copy examples\case21-3.inp input.inp
+copy examples\case21d-3.inp deice.inp
+copy examples\case21-3.xyd geom.xyd
+copy examples\rflow21-3.inp rflow.inp
+copy examples\rbeta21-3.inp rbeta.inp
+copy examples\rhtc21-3.inp rhtc.inp
+copy examples\stream21-3.inp stream.inp
+LEWICE < lewice.inp
+mkdir output\lewice\case21-3
+mkdir output\thick\case21-3
+move *.dat output\lewice\case21-3
+move fort.* output\lewice\case21-3
+copy output\lewice\case21-3\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case21-3
+
+copy examples\case21-4.inp input.inp
+copy examples\case21d-4.inp deice.inp
+copy examples\case21-4.xyd geom.xyd
+copy examples\rflow21-4.inp rflow.inp
+copy examples\rbeta21-4.inp rbeta.inp
+copy examples\rhtc21-4.inp rhtc.inp
+copy examples\stream21-4.inp stream.inp
+LEWICE < lewice.inp
+mkdir output\lewice\case21-4
+mkdir output\thick\case21-4
+move *.dat output\lewice\case21-4
+move fort.* output\lewice\case21-4
+copy output\lewice\case21-4\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case21-4
+
+copy examples\case21-5.inp input.inp
+copy examples\case21d-5.inp deice.inp
+copy examples\case21-5.xyd geom.xyd
+copy examples\rflow21-5.inp rflow.inp
+copy examples\rbeta21-5.inp rbeta.inp
+copy examples\rhtc21-5.inp rhtc.inp
+copy examples\stream21-5.inp stream.inp
+LEWICE < lewice.inp
+mkdir output\lewice\case21-5
+mkdir output\thick\case21-5
+move *.dat output\lewice\case21-5
+move fort.* output\lewice\case21-5
+copy output\lewice\case21-5\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case21-5
+
+copy examples\case22.inp input.inp
+copy examples\case22.xyd geom.xyd
+copy examples\q.plt q.plt
+copy examples\xy.plt xy.plt
+LEWICE < lewice.inp
+mkdir output\lewice\case22
+mkdir output\thick\case22
+move *.dat output\lewice\case22
+move fort.* output\lewice\case22
+copy output\lewice\case12\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case22
+erase *.plt
+
+copy examples\case22p.inp input.inp
+LEWICE < lewice.inp
+mkdir output\lewice\case22p
+mkdir output\thick\case22p
+move *.dat output\lewice\case22p
+move fort.* output\lewice\case22p
+copy output\lewice\case22p\final1.dat final1.dat
+thick < thick.inp
+move *.dat output\thick\case22p

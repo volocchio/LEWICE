@@ -1,0 +1,194 @@
+ l    nx
+ 2    10
+ # of   length    conductivity   diffusivity  anisotropy  slope (b) of
+ nodes   (m)        (W/m/K)        (m**2/s)      factor     temp. eqn.    
+C     abrasion shield
+ 18    2.030d-4   102.000d0       7.332d-5       1.d0      0.d0
+C     ice
+ 21    2.540d-3     2.232d0       1.151d-6       1.d0      0.d0
+ # of   length     cond.     diff.   anis.  slope of    add.   layer  
+ nodes   (m)      (W/m/K)  (m**2/s)        temp. eqn.  thick.  number 
+C     gap (no heat input)
+ 10    0.1873d0  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+C     heater G
+ 14    3.175d-2  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+C     heater E
+ 21    2.540d-2  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+C     heater C
+ 21    2.540d-2  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+C     parting strip - heater A
+ 18   0.9525d-2  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+C     parting strip - heater A
+ 18   0.9525d-2  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+C     heater B
+ 21    2.540d-2  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+C     heater D
+ 21    2.540d-2  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+C     heater F
+ 14    3.175d-2  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+C     gap (no heat input)
+ 10    0.1873d0  102.00d0  7.332d-5  1.d0    0.d0     0.d0       1
+ijde  offset ipar1
+001   0.000   1                
+C     Q            TON          TOFF       TLAG     ICFLAG
+ heater density  time on     time off    lag time  temp cntrl.
+ (kWatts/m**2)     (sec)       (sec)       (sec)   flag 
+C     gap (no heat input)
+      0.0d0         0.d0        0.d0        0.d0     0                
+C     heater G
+     00.00d0       00.d0        0.d0        0.d0     0              
+C     heater E
+     00.00d0       00.d0        0.d0        0.d0     0              
+C     heater C
+     08.00d0      278.d0      277.d0        0.d0     1              
+C     parting strip (heater A) does not turn off
+      8.38d0      278.d0      277.d0        0.d0     1               
+C     parting strip (heater A) does not turn off
+      1.75d0      278.d0      277.d0        0.d0     1               
+C     heater B
+      4.15d0      278.d0      277.d0        0.d0     1  
+C     heater D
+     08.00d0      278.d0      277.d0        0.d0     1                
+C     heater F
+     00.00d0       00.d0        0.d0        0.d0     0                
+C     gap (no heat input)
+      0.0d0         0.d0        0.d0        0.d0     0  
+ibc1 ibc2 ibc3 ibc4
+3    2    2    2          
+ tg1     tg2    tg3    tg4
+ 255.0  255.0  255.0  255.0      
+ h1      h2     h3     h4  
+ 3.d0   3.d2   0.d0   0.d0 
+ qw1     qw2    qw3    qw4
+ 0.d0    0.d0   0.d0   0.d0 
+ tairh  airmd   airup   xairmd
+  5.d2  0.1d0    0.5d0    0.d0
+ nhole  dhole    dtube  rdist  ycase  xuhnd  xlhnd
+  3   0.00132  0.0381   50.    0.0    0.23   0.26
+ icase  hconst  rep    rp    zp  rrp  dp
+  1      1.0  0.76   1.394  1.   0.   0.
+ xhole(m)    yhole(m)   zdist(m)
+  -0.0176     -0.033     0.0107
+   0.000       0.000     0.0091
+   0.0176     -0.033     0.0076
+ iliner  xuliner xlliner  xulst    xulnd  xllst  xllnd
+   1     0.01     0.01   0.07546  0.1485 0.07546 0.1485
+i3d   iqain  ibleed iopt  itsur
+ 1     0      0      1      0
+icond  ibound  init  ish  istd  igde
+ 1      3       2     1    1    1
+ tsurf  ievap  itherm 
+ 278.0d0   0      1 
+sta     rpm   irot
+10.d0   0.d0   1 
+dtaui  nisp  dtaum  nmsp  dtauf  jcount
+1.d-1  1000  1.d-1  1000  1.d-1    30
+tspray  tafter
+ 0.d0   0.d0
+iscol   jscol   kscol   sslope   szero
+input parameters for reading in hot air HTC info
+  1       2       2    3.937d0    0.830861d0
+input parameters for reading in hot air q_wall info
+  1       2       2    3.937d0    0.830861d0
+input parameters for reading in surf. temperature info
+  1       2       2    3.937d0    0.830861d0
+input parameters for reading in 3D streamline info
+  1       2       2    3.937d0    0.830861d0
+nprt  nprf
+ 1    0
+PLOT3D output times (sec)
+ 180
+ntype
+  3
+iotype  nptsd
+  1      20
+C       section where    layer  where
+           5     2         1      1
+           4     2         1      1
+           6     2         1      1
+           3     2         1      1
+           7     2         1      1
+           2     2         1      1
+           8     2         1      1
+           1     2         1      1
+           9     2         1      1
+          10     2         1      1
+           5     2         2      1
+           4     2         2      1
+           6     2         2      1
+           3     2         2      1
+           7     2         2      1
+           2     2         2      1
+           8     2         2      1
+           1     2         2      1
+           9     2         2      1
+          10     2         2      1
+iotype  nptsd
+  2       30
+C
+C        time       layer   where
+C        (sec)
+            5         2       1
+           10         2       1
+           15         2       1
+           20         2       1
+           25         2       1
+           30         2       1
+           35         2       1
+           40         2       1
+           45         2       1
+           50         2       1
+           55         2       1
+           60         2       1
+           65         2       1
+           70         2       1
+           75         2       1
+           80         2       1
+           85         2       1
+           90         2       1
+           95         2       1
+          100         2       1
+          105         2       1
+          110         2       1
+          115         2       1
+          120         2       1
+          125         2       1
+          130         2       1
+          135         2       1
+          140         2       1
+          145         2       1
+          150         2       1
+iotype  nptsd
+  3      30
+C          time    section  where
+C         (sec)
+             5        5       2
+            10        5       2
+            15        5       2
+            20        5       2
+            25        5       2
+            30        5       2
+            35        5       2
+            40        5       2
+            45        5       2
+            50        5       2
+            55        5       2
+            60        5       2
+            65        5       2
+            70        5       2
+            75        5       2
+            80        5       2
+            85        5       2
+            90        5       2
+            95        5       2
+           100        5       2
+           105        5       2
+           110        5       2
+           115        5       2
+           120        5       2
+           125        5       2
+           130        5       2
+           135        5       2
+           140        5       2
+           145        5       2
+           150        5       2

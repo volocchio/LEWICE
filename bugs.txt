@@ -1,0 +1,57 @@
+The version of LEWICE you have received (version 3.0) is considered a tested release. As such, all features have been fully tested. Some features have been tested and have known problems (bugs) that the user should be aware of. These problems are being actively worked on. The bugs which are listed here may not be a complete list, but it lists the most important problems with the software from the point of view of the developer.
+
+PLATFORM ISSUES
+
+The LEWICE.EXE executable was created on a WindowsXP platform. It has been
+confirmed that the executable runs on Windows/XP, Windows/NT, Windows2000, 
+Windows/Me and Windows/98 machines. All outputs were identical on each platform. 
+Contact the developers if the program does not run on your platform. 
+
+CONVERGENCE ISSUES
+
+The thermal module, which controls both bleed air and electrothermal capabilities, occasionally has trouble converging on the temperature matrix. 
+The convergence problems take one of the following two forms:
+
+	1) Repeated warnings of "program is having problems with this case" and 
+	"phase change algorithm did not coverge". If these warnings are 
+	infrequent, they can probably be disregarded. These warnings indicate 
+	difficulty in determining if ice is melting/refreezing for a marginally 
+	heated case. While these cases can sometimes be ran with an increased 
+	number of iterations or a decreased time steps, the best way to avoid 
+	the warning is to supply more heat since these warnings occur for failed 
+	cases (ice didn't shed).
+	
+	2) Warnings, especially repeated warnings, of "In SOLVEW, newton-raphson 
+	did not connverge". This warning may be changed to an error message, as 
+	the solution is most likely in error. This warning usually occurs for 
+	overheated evaporative cases where the surface temperature approaches or 
+	exceeds 100¡C. In modeling surface water physics, LEWICE uses several 
+	correlations for varialbles such as specific heat which are only valid 
+	in the range 0¡C to 100¡C. (A separate correlation is used for 
+	supercooled water.) Once this occurs, the surface temperature can 
+	increase dramatically, resulting in unrealisticly high tempratures. 
+	However, these conditions can be avoided since a result like this 
+	indicates that excessive heat was supplied. 
+	
+COMPARISON ISSUES
+
+Ice Shapes
+
+A complete revalidation of LEWICE has been performed as described in the LEWICE validation report (NASA CR208690). This validation has shown that the ice shapes generated with version 3.2 are nearly identical to version 2.0 when the software has been set to the default parameters (SLD = 0, IBOOT = 0, IDEICE = 0). The ice shape comparison is slightly better, but not significantly so.
+
+Bleed Air
+
+NASA does not have an experimental database for bleed air cases. Several conditions have been compared to the ANTICE program. Although the bleed air capabilities in LEWICE 3.0 were implemented using subroutines from ANTICE, the temperatures calcualted by ANTICE and those calculated by LEWICE 3.2 do not agree. The reason for this has not been established and the lack of a reliable database may prohibit a resolution to this problem as it cannot be determined which, if either, is correct.
+
+Electrothermal Heaters
+
+A complete and quantified validation of LEWICE 3.2 has been performed on 107 electrothermal de-icer cases from a 1996 IRT test. The conditions and previous results are described in papers AIAA 97-0049, 97-0050 and 97-0051. The current validation is much more thorough and complete than the efforts described in the previous reports. Every condition was ran using both laminar and turbulent heat transfer assumptions (IDEICE=2 and IDEICE=3 options) as well as shedding criteria ISTD=1 and ISTD=2. Overall, the combination IDEICE=3 (laminar) and ISTD=1 (sectional shedding) produced the best results. Nodal shedding (ISTD=2) produced better results for some conditions, but was prone to overheating problems (see convergence issues above). The turbulent assumption (IDEICE=2), which is used for icing cases, underpredicted temperatures (especially peak temperatures) for almost every case. A laminar assumption (IDEICE=3) performed better overall. Most of the temperatures were overpredicted, while a minority of cases still showed an underprediction. Trends have not been noted as yet to distinguish when overprediction versus underprediction will occur.
+
+Runback Ice
+
+In the test described above, approximate measurements of runback ice were made. Due to the fragile nature of runback ice, tracings could not be made. An effort was made to make a quantitative comparison between the data and LEWICE 3.2. Unfortunately, the measurements were not sufficiently quantitative to allow this type of comparison. It has been noticed that LEWICE 3.2 tends to perform as an idealized (effective) de-icer, leaving little if any runback. This means that the current model is not considered to be a conservative assesment of runback ice formations. The IDEICE = 4 option has shown improvement in this regard, but quantitative data is not available at this time to quantify the improvement.
+
+TIME STEPPING
+
+When generating ice shapes, LEWICE should run multiple time steps to update the flow solution and collection efficiencies as the ice accretes. When using the program for de-icing or anti-icing, this is usually not necessary as little if any ice is formed. This is pointed out because erratic results have been obtained when using multiple time steps in conjuntion with de-icing cases. It is recommended that a single IFLO time step should be used unless there is significant ice accretion due to runback for your case. A single is especially recommended for cases that use the ICEG2D option. Multi-time stepping cases
+with de-icing and ICEG2D have not worked satisfactorily.

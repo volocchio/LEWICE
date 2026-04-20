@@ -1,0 +1,36 @@
+ Test Case 
+ &LEW20
+ ITIMFL =    0
+ TSTOP  =  600
+ IBOD   =    1
+ IFLO   =   1
+ DSMN   =    4.0D-4
+ NPL    =   24
+ IDEICE =    2
+ &END
+ &DIST
+ FLWC   = 1.0
+ DPD    = 20.
+ &END
+ &ICE1
+ CHORD  = 0.9144
+ AOA    =  -2.
+ VINF   =  44.7
+ LWC    = 0.78
+ TINF   = 254.40
+ PINF   = 100000.00
+ RH     = 100.0
+ &END
+ &LPRNT
+ FPRT   = 1
+ HPRT   = 1
+ BPRT   = 1
+ EPRT   = 1
+ MPRT   = 1
+ TPRT   = 0
+ IDBF   = 1
+ &END
+ &RDATA
+ &END
+ &BOOT
+ &END

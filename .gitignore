@@ -1,0 +1,8 @@
+﻿__pycache__/
+*.pyc
+.venv/
+.env
+*.dat
+studio/test_run/
+*.suo
+*.sln

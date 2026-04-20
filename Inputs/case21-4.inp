@@ -1,0 +1,54 @@
+ Test Case 
+ &LEW20
+ ITIMFL =   0
+ TSTOP  = 180.
+ IBOD   =    1
+ IFLO   =    1
+ DSMN   =    4.0D-4
+ NPL    =  24 
+ IDEICE =   3
+ ICP    =   1
+ IBETA  =   1
+ IHTC   =   1
+ &END
+ &DIST
+ FLWC   = 1.0
+ DPD    = 20.36
+ &END
+ &ICE1
+ CHORD  = 0.254 
+ AOA    =  0.0
+ VINF   =  76.86
+ LWC    = 0.200
+ TINF   = 255.00
+ PINF   =  84680.00
+ RH     = 100.0
+ &END
+ &LPRNT
+ FPRT   = 1
+ HPRT   = 1
+ BPRT   = 1
+ EPRT   = 1
+ MPRT   = 1
+ TPRT   = 0
+ IDBF   = 1
+ &END
+ &RDATA
+ ISCOLB = 1
+ JSCOLB = 2
+ KSCOLB = 2
+ SSLOPB = 3.937d0
+ SZEROB = 0.839467d0
+ ISCOLH = 1
+ JSCOLH = 2
+ KSCOLH = 2
+ SSLOPH = 3.937d0
+ SZEROH = 0.839467d0
+ ISCOLC = 4
+ JSCOLC = 6
+ KSCOLC = 6
+ SSLOPC = 3.937d0
+ SZEROC = 0.839467d0
+ &END
+ &BOOT
+ &END

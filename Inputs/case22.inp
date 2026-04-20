@@ -1,0 +1,33 @@
+ Example 22 Test Case 
+ &LEW20
+ ITIMFL = 0
+ TSTOP  =   60.
+ IBOD   =    1
+ IFLO   =   1
+ DSMN   =    4.0D-4
+ NPL    =   24
+ IGRID  =   1
+ &END
+ &DIST
+ FLWC   = 1.0
+ DPD    = 20.
+ &END
+ &ICE1
+ CHORD  = 1.745
+ AOA    =  5.0
+ VINF   =  76.
+ LWC    = 0.80
+ TINF   = 258.00
+ PINF   = 100000.00
+ RH     = 100.0
+ &END
+ &LPRNT
+ FPRT   = 1
+ HPRT   = 1
+ BPRT   = 1
+ TPRT   = 0
+ &END
+ &RDATA
+ &END
+ &BOOT
+ &END

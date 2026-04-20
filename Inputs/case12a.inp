@@ -1,0 +1,38 @@
+Example 12a Test Case
+ &LEW20
+ ITIMFL = 0
+ TSTOP  =  2700
+ IBOD   =    1
+ IFLO   =    45
+ DSMN   =    4.0D-4
+ NPL    =   24
+ IBOOT  =    0
+ &END
+ &DIST
+ FLWC = 0.030, 0.133, 0.152, 0.048, 0.083, 0.354, 0.103, .067, .030 
+ DPD =      4,    17,    72,   235,   345,   560,   895, 1120, 1405
+ &END
+ &ICE1
+ CHORD  = 1.36
+ AOA    =  3.0
+ VINF   =  76.8
+ LWC    = 0.47
+ TINF   = 268.15
+ PINF   = 89232.3
+ RH     = 100.0
+ &END
+ &LPRNT
+ FPRT   = 1
+ HPRT   = 1
+ BPRT   = 1
+ TPRT   = 0
+ MPRT   = 0
+ EPRT   = 0
+ &END
+ &RDATA
+ &END
+ &BOOT
+ XBOOTUP  = 0.075
+ XBOOTLOW = 0.075
+ HRES     = 0.00
+ &END

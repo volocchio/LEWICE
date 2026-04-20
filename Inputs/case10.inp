@@ -1,0 +1,34 @@
+ Example 10 Test Case 
+ &LEW20
+ ITIMFL =   1
+ TSTOP  =   60.
+ IBOD   =    1
+ IFLO   =   1
+ DSMN   =    2.0D-4
+ NPL    =   24
+ SLD    =    1
+ &END
+ &DIST
+ FLWC =  0.010, 0.064, 0.106, 0.073, 0.135, 0.164, 0.149, 0.103, 0.130, 0.065
+ DPD  =   10.9,  21.8,  31.8,  43.8,  69.2,  98.2, 126.7, 157.8, 196.3, 241.4
+ &END
+ &ICE1
+ CHORD  = 0.9144
+ AOA    =  0.
+ VINF   =  78.68
+ LWC    = 0.47 
+ TINF   = 293.15
+ PINF   = 89232.3  
+ RH     = 70.0
+ &END
+ &LPRNT
+ FPRT   = 1
+ HPRT   = 1
+ BPRT   = 1
+ TPRT   = 0
+ IDBF   = 1
+ &END
+ &RDATA
+ &END
+ &BOOT
+ &END

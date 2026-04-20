@@ -1,0 +1,349 @@
+def mode batch
+def case case23
+def surf smooth
+def solver wind
+#
+# initial clean solution
+#
+def iced_geom case23.cln
+gen dist
+gen grid
+def info case23_start.inf
+def output case23_start
+gen input 
+gen solution 
+#
+def info case23_restart.inf
+def input_grid case23.grd
+def input_q case23.q
+#
+# Preprocessing for ice accretion step #1
+#
+def lewice_input case23_1.inp
+gen lewice_input
+#
+# Ice accretion step #1
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #1
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 1-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart1.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #1
+#
+gen solution
+#
+# Preprocessing for ice accretion step #2
+#
+def lewice_input case23_2.inp
+gen lewice_input
+#
+# Ice accretion step #2
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #2
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 2-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart2.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #2
+#
+gen solution
+#
+# Preprocessing for ice accretion step #3
+#
+def lewice_input case23_3.inp
+gen lewice_input
+#
+# Ice accretion step #3
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #3
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 3-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart3.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #3
+#
+gen solution
+#
+# Preprocessing for ice accretion step #4
+#
+def lewice_input case23_4.inp
+gen lewice_input
+#
+# Ice accretion step #4
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #4
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 4-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart4.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #4
+#
+gen solution
+#
+# Preprocessing for ice accretion step #5
+#
+def lewice_input case23_5.inp
+gen lewice_input
+#
+# Ice accretion step #5
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #5
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 5-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart5.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #5
+#
+gen solution
+#
+# Preprocessing for ice accretion step #6
+#
+def lewice_input case23_6.inp
+gen lewice_input
+#
+# Ice accretion step #6
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #6
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 6-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart6.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #6
+#
+gen solution
+#
+# Preprocessing for ice accretion step #7
+#
+def lewice_input case23_7.inp
+gen lewice_input
+#
+# Ice accretion step #7
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #7
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 7-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart7.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #7
+#
+gen solution
+#
+# Preprocessing for ice accretion step #8
+#
+def lewice_input case23_8.inp
+gen lewice_input
+#
+# Ice accretion step #8
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #8
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 8-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart8.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #8
+#
+gen solution
+#
+# Preprocessing for ice accretion step #9
+#
+def lewice_input case23_9.inp
+gen lewice_input
+#
+# Ice accretion step #9
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #9
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 9-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart9.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #9
+#
+gen solution
+#
+# Preprocessing for ice accretion step #10
+#
+def lewice_input case23_10.inp
+gen lewice_input
+#
+# Ice accretion step #10
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #10
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 10-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart10.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #10
+#
+gen solution
+#
+# Preprocessing for ice accretion step #11
+#
+def lewice_input case23_11.inp
+gen lewice_input
+#
+# Ice accretion step #11
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #11
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 11-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart11.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #11
+#
+gen solution
+#
+# Preprocessing for ice accretion step #12
+#
+def lewice_input case23_12.inp
+gen lewice_input
+#
+# Ice accretion step #12
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #12
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 12-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart12.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #12
+#
+gen solution
+#
+# Preprocessing for ice accretion step #13
+#
+def lewice_input case23_13.inp
+gen lewice_input
+#
+# Ice accretion step #13
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #13
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 13-minute_shape.dst
+gen dist
+gen grid
+def output case23_restart13.out
+gen input
+gen restart_update
+#
+# run wind for ice accretion step #13
+#
+gen solution
+#
+# Preprocessing for ice accretion step #14
+#
+def lewice_input case23_14.inp
+gen lewice_input
+#
+# Ice accretion step #14
+#
+gen lewice 
+#
+# Preprocessing for flow solution using ice accretion #14
+#
+gen grid_update
+def iced_geom updated_airfoil
+def dist 14-minute_shape.dst
+gen dist
+gen grid
+#
+exit

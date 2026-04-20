@@ -1,0 +1,21 @@
+$TITLES
+  title(1) = "NACA0012 - Run 411",
+  title(2) = "Mach = 0.3167, alpha = 3.5 deg.",
+  title(3) = "Single-block, C-grid.",
+$END
+
+$INPUTS
+  chord = 1.75,
+  mach = 0.3167,
+  alpha = 3.5,
+  pressureStatic = 14.7,
+  temperatureStatic = 471.67,
+  isothermalWall = .true.,
+  wallTemperature = 491.67,
+  turbulenceModel = "spalart allmaras",
+  order = 5,
+  cycles = 200,
+  iterationsPerCycle = 10,
+  cfl = 10.0
+  version = 1
+$END
