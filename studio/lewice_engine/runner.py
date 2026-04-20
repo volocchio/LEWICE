@@ -40,7 +40,11 @@ def run_lewice(inp_file, xyd_file, work_dir=None, timeout=300):
 
     # LEWICE is a Windows executable. On Linux hosts (e.g., VPS containers),
     # run it through Wine; on Windows, run it directly.
-    command = [exe] if os.name == "nt" else ["wine", exe]
+    if os.name == "nt":
+        command = [exe]
+    else:
+        wine_cmd = shutil.which("wine") or shutil.which("wine64") or "wine64"
+        command = [wine_cmd, exe]
 
     start = time.time()
     try:
