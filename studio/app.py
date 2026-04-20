@@ -19,6 +19,7 @@ from lewice_engine.input_builder import (
 )
 from lewice_engine.output_parser import parse_clean_airfoil, parse_ice_shape, compute_ice_metrics
 from airfoils.naca_library import naca4, write_xyd, COMMON_AIRFOILS
+from reports.generator import build_report, _classify_ice, _assess_risk
 
 # ---------- Page Config ----------
 st.set_page_config(
@@ -207,20 +208,119 @@ with tab3:
 # ---- Tab 4: Report ----
 with tab4:
     st.subheader("Certification Report Generator")
-    st.info("After running cases, generate a PDF or PowerPoint report with all ice shapes, conditions, and risk assessment.")
+    st.markdown("Generate a professional, FAA-style PowerPoint report with ice shapes, "
+                "conditions, impingement limits, risk assessment, and recommendations.")
+    st.divider()
+
+    # Report configuration
+    rcol1, rcol2 = st.columns(2)
+    with rcol1:
+        project_name = st.text_input("Project / Aircraft Name", value="Aircraft Icing Analysis")
+        analyst_name = st.text_input("Analyst Name", value="")
+    with rcol2:
+        report_notes = st.text_area("Additional Notes", value="", height=100)
+
+    st.divider()
+
+    # Risk preview
+    ice_type_preview = _classify_ice(temp_c, lwc, mvd)
+    st.markdown(f"**Predicted Ice Type:** `{ice_type_preview}`  |  "
+                f"**Temp:** {temp_c} C  |  **LWC:** {lwc} g/m3  |  **MVD:** {mvd} um")
 
     risk_col1, risk_col2, risk_col3 = st.columns(3)
     with risk_col1:
         st.markdown('<div class="risk-green">LOW RISK</div>', unsafe_allow_html=True)
-        st.caption("Rime ice, thin accretion, no horns")
+        st.caption("Rime ice, < 5 mm thickness")
     with risk_col2:
         st.markdown('<div class="risk-yellow">MEDIUM RISK</div>', unsafe_allow_html=True)
-        st.caption("Mixed ice, moderate accretion")
+        st.caption("Mixed ice, 5-15 mm thickness")
     with risk_col3:
         st.markdown('<div class="risk-red">HIGH RISK</div>', unsafe_allow_html=True)
-        st.caption("Glaze ice, horn formations, runback")
+        st.caption("Glaze ice, > 15 mm, horn formations")
 
     st.divider()
-    report_format = st.radio("Report Format", ["PowerPoint (.pptx)", "PDF"])
-    if st.button("Generate Report", type="primary"):
-        st.warning("Run LEWICE cases first, then report generation will be enabled.")
+
+    # Data source
+    data_source = st.radio("Ice Shape Data Source", [
+        "Use demo Case 1 data (NASA validation)",
+        "Load from LEWICE output folder",
+    ])
+
+    ice_output_dir = None
+    if data_source == "Load from LEWICE output folder":
+        ice_output_dir = st.text_input(
+            "Path to LEWICE output directory (containing final1.dat)", value="")
+
+    if st.button("Export Certification Report (.pptx)", type="primary"):
+        with st.spinner("Generating certification report..."):
+            clean_coords = None
+            ice_coords = None
+            max_thickness_mm = 0.0
+            impingement = None
+
+            if data_source == "Use demo Case 1 data (NASA validation)":
+                demo_xyd = os.path.join(os.path.dirname(__file__), "..", "Inputs", "case1.xyd")
+                demo_ice = os.path.join(os.path.dirname(__file__), "test_run", "case1", "final1.dat")
+
+                if os.path.isfile(demo_xyd) and os.path.isfile(demo_ice):
+                    clean_coords = parse_clean_airfoil(demo_xyd)
+                    ice_coords = parse_ice_shape(demo_ice)
+                    min_x = min(c[0] for c in ice_coords)
+                    max_thickness_mm = abs(min_x) * chord * 1000
+                    impingement = {
+                        "upper": {"x": 0.003625, "y": 0.005619, "s": 0.020414},
+                        "lower": {"x": 0.145164, "y": -0.030770, "s": -0.143421},
+                    }
+                else:
+                    st.error("Demo data not found. Run LEWICE Case 1 first.")
+                    st.stop()
+            else:
+                if ice_output_dir and os.path.isdir(ice_output_dir):
+                    final_path = os.path.join(ice_output_dir, "final1.dat")
+                    if os.path.isfile(final_path):
+                        ice_coords = parse_ice_shape(final_path)
+                        min_x = min(c[0] for c in ice_coords)
+                        max_thickness_mm = abs(min_x) * chord * 1000
+                    else:
+                        st.error(f"final1.dat not found in {ice_output_dir}")
+                        st.stop()
+                else:
+                    st.error("Provide a valid output directory path.")
+                    st.stop()
+
+            if clean_coords is None and airfoil_choice != "Upload Custom .xyd":
+                designation = COMMON_AIRFOILS[airfoil_choice]
+                clean_coords = naca4(designation, n_points=80)
+
+            report_buf = build_report(
+                project_name=project_name,
+                airfoil_name=airfoil_choice,
+                chord_m=chord,
+                conditions={
+                    "speed_ktas": speed_ktas,
+                    "altitude_ft": altitude_ft,
+                    "temp_c": temp_c,
+                    "lwc": lwc,
+                    "mvd": mvd,
+                    "exposure_min": exposure_min,
+                    "aoa_deg": aoa,
+                },
+                clean_coords=clean_coords,
+                ice_coords=ice_coords,
+                impingement_data=impingement,
+                max_thickness_mm=max_thickness_mm,
+                analyst_name=analyst_name,
+                notes=report_notes,
+            )
+
+            risk_level, risk_desc = _assess_risk(max_thickness_mm)
+            st.success(f"Report generated!  Max thickness: {max_thickness_mm:.1f} mm  |  "
+                       f"Ice type: {ice_type_preview}  |  Risk: {risk_level}")
+
+            st.download_button(
+                label="Download Report (.pptx)",
+                data=report_buf,
+                file_name=f"LEWICE_Report_{project_name.replace(' ', '_')}.pptx",
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                type="primary",
+            )
