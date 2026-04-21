@@ -3,6 +3,7 @@ LEWICE Studio — Streamlit App
 Modern UI for NASA LEWICE aircraft icing simulation.
 No PhD in ice required.
 """
+import re
 import streamlit as st
 import plotly.graph_objects as go
 import json
@@ -133,7 +134,32 @@ def _collect_output_sources():
 st.sidebar.header("Aircraft & Flight Conditions")
 
 # Airfoil selection
-airfoil_choice = st.sidebar.selectbox("Airfoil", list(COMMON_AIRFOILS.keys()) + ["Upload Custom .xyd"])
+airfoil_choice = st.sidebar.selectbox(
+    "Airfoil",
+    list(COMMON_AIRFOILS.keys()) + ["Custom NACA Code", "Upload Custom .xyd"],
+)
+
+designation = None
+airfoil_label = airfoil_choice
+airfoil_is_valid = True
+
+if airfoil_choice in COMMON_AIRFOILS:
+    designation = COMMON_AIRFOILS[airfoil_choice]
+elif airfoil_choice == "Custom NACA Code":
+    custom_naca = st.sidebar.text_input("NACA Code", value="23012", help="Examples: 2412, 4415, 23012")
+    candidate = custom_naca.strip().upper().replace("NACA", "").replace("-", "").replace(" ", "")
+    if re.fullmatch(r"\d{4}|\d{5}", candidate):
+        designation = candidate
+        airfoil_label = f"NACA {designation}"
+        if len(designation) == 5:
+            st.sidebar.caption("5-digit NACA camber line is approximate in this generator; thickness is exact.")
+    else:
+        airfoil_is_valid = False
+        st.sidebar.error("Enter a valid NACA code: 4 digits (e.g. 2412) or 5 digits (e.g. 23012).")
+
+if designation:
+    airfoil_label = f"NACA {designation}"
+
 if airfoil_choice == "Upload Custom .xyd":
     uploaded_xyd = st.sidebar.file_uploader("Upload .xyd file", type=["xyd", "dat", "txt"])
 else:
@@ -169,8 +195,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Airfoil Preview", "LEWICE Input", "Run & Resu
 with tab1:
     st.subheader("Airfoil Geometry")
 
-    if airfoil_choice != "Upload Custom .xyd":
-        designation = COMMON_AIRFOILS[airfoil_choice]
+    if airfoil_choice != "Upload Custom .xyd" and designation and airfoil_is_valid:
         coords = naca4(designation, n_points=80)
         x_vals = [c[0] for c in coords]
         y_vals = [c[1] for c in coords]
@@ -182,14 +207,17 @@ with tab1:
             xaxis_title="x/c", yaxis_title="y/c",
             yaxis=dict(scaleanchor="x", scaleratio=1),
             height=400, margin=dict(l=40, r=40, t=30, b=40),
-            title=f"{airfoil_choice} — {len(coords)} points"
+            title=f"{airfoil_label} — {len(coords)} points"
         )
         st.plotly_chart(fig, width="stretch")
 
         col1, col2, col3 = st.columns(3)
         col1.metric("Points", len(coords))
-        col2.metric("Max Thickness", f"{int(designation[2:4])}%")
-        col3.metric("Max Camber", f"{int(designation[0])}%")
+        col2.metric("Max Thickness", f"{int(designation[-2:])}%")
+        if len(designation) == 4:
+            col3.metric("Max Camber", f"{int(designation[0])}%")
+        else:
+            col3.metric("Series", "5-digit")
     else:
         if uploaded_xyd:
             content = uploaded_xyd.read().decode("utf-8")
@@ -211,6 +239,8 @@ with tab1:
             st.metric("Points", len(coords))
         else:
             st.info("Upload a .xyd file to preview the airfoil geometry.")
+    if airfoil_choice != "Upload Custom .xyd" and (not designation or not airfoil_is_valid):
+        st.warning("Enter a valid NACA code to preview geometry.")
 
 # ---- Tab 2: LEWICE Input Preview ----
 with tab2:
@@ -222,7 +252,7 @@ with tab2:
         temp_c=temp_c, lwc=lwc, mvd=mvd,
         exposure_min=exposure_min,
     )
-    inp_text = build_input(params, title=f"LEWICE Studio - {airfoil_choice}")
+    inp_text = build_input(params, title=f"LEWICE Studio - {airfoil_label}")
     st.code(inp_text, language="fortran")
 
     col1, col2, col3, col4 = st.columns(4)
@@ -252,22 +282,26 @@ with tab3:
     else:
         st.error(f"LEWICE executable not found at expected path. Place lewice.exe in the LEWICE root directory.")
 
-    if st.button("Run Single Case", disabled=not exe_exists, type="primary"):
+    run_disabled = (not exe_exists) or (airfoil_choice != "Upload Custom .xyd" and (not designation or not airfoil_is_valid))
+    if st.button("Run Single Case", disabled=run_disabled, type="primary"):
         st.info("Running LEWICE... this typically takes 5-30 seconds per case.")
         with st.spinner("Simulating ice accretion..."):
             tmp_dir = tempfile.mkdtemp(prefix="lewice_studio_")
             inp_path = os.path.join(tmp_dir, "case.inp")
             xyd_path = os.path.join(tmp_dir, "case.xyd")
 
-            write_input(inp_path, params, title=f"Studio Run - {airfoil_choice}")
+            write_input(inp_path, params, title=f"Studio Run - {airfoil_label}")
 
             if airfoil_choice != "Upload Custom .xyd":
-                designation = COMMON_AIRFOILS[airfoil_choice]
                 foil_coords = naca4(designation, n_points=80)
                 write_xyd(xyd_path, foil_coords)
             elif uploaded_xyd:
+                content = uploaded_xyd.getvalue().decode("utf-8")
                 with open(xyd_path, "w") as f:
                     f.write(content)
+            else:
+                st.error("Upload a valid .xyd file before running LEWICE.")
+                st.stop()
 
             from lewice_engine.runner import run_lewice
             result = run_lewice(inp_path, xyd_path, work_dir=tmp_dir)
@@ -300,7 +334,7 @@ with tab3:
         ice_plot = parse_ice_shape(os.path.join(run_dir, "final1.dat"))
         plot_title = "LEWICE Run Result — Ice Shape Overlay"
         st.caption("Showing results from latest LEWICE run.")
-    elif os.path.isfile(demo_ice):
+    elif demo_ice and os.path.isfile(demo_ice) and os.path.isfile(demo_xyd):
         # Show demo Case 1 data
         clean_plot = parse_clean_airfoil(demo_xyd)
         ice_plot = parse_ice_shape(demo_ice)
@@ -308,8 +342,7 @@ with tab3:
         st.caption("Showing NASA LEWICE Case 1 validation data. Run your own case to replace.")
     else:
         # No ice data available — show clean airfoil only
-        if airfoil_choice != "Upload Custom .xyd":
-            designation = COMMON_AIRFOILS[airfoil_choice]
+        if airfoil_choice != "Upload Custom .xyd" and designation and airfoil_is_valid:
             clean_plot = naca4(designation, n_points=80)
         plot_title = "Clean Airfoil (no ice data yet — run LEWICE or add demo data)"
         st.caption("Run LEWICE to generate ice shape data.")
@@ -494,13 +527,12 @@ with tab4:
                     "lower": {"x": 0.145164, "y": -0.030770, "s": -0.143421},
                 }
 
-            if clean_coords is None and airfoil_choice != "Upload Custom .xyd":
-                designation = COMMON_AIRFOILS[airfoil_choice]
+            if clean_coords is None and airfoil_choice != "Upload Custom .xyd" and designation and airfoil_is_valid:
                 clean_coords = naca4(designation, n_points=80)
 
             report_buf = build_report(
                 project_name=project_name,
-                airfoil_name=airfoil_choice,
+                airfoil_name=airfoil_label,
                 chord_m=chord,
                 conditions={
                     "speed_ktas": speed_ktas,

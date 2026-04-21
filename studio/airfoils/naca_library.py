@@ -5,9 +5,16 @@ Generate 4-digit NACA airfoil coordinates for LEWICE input.
 import math
 
 def naca4(designation, n_points=60):
+    designation = designation.strip()
+    if not designation.isdigit() or len(designation) not in (4, 5):
+        raise ValueError(f"Unsupported NACA designation: {designation}")
+
+    # 4-digit series: MPXX (camber, camber position, thickness)
+    # 5-digit series handling here is approximate for camber line, but thickness
+    # is correctly taken from the final two digits (e.g. 23012 -> 12% thickness).
     m = int(designation[0]) / 100.0
     p = int(designation[1]) / 10.0
-    t = int(designation[2:4]) / 100.0
+    t = int(designation[-2:]) / 100.0
     beta = [i * math.pi / (n_points - 1) for i in range(n_points)]
     x_coords = [0.5 * (1 - math.cos(b)) for b in beta]
     def thickness(x):
