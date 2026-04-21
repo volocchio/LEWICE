@@ -133,7 +133,8 @@ def generate_ice_shape_image(clean_coords, ice_coords, title="", width_px=900, h
             iy = [p[1] for p in ice_coords]
             ax.plot(ix, iy, color='#C8A84E', linewidth=2.0, label='Iced Airfoil')
 
-        ax.set_aspect('equal')
+        # No set_aspect('equal') here — the airfoil y-range (~0.12) vs x-range (1.0)
+        # would leave massive dead space. Let the axes fill the figure naturally.
         ax.set_xlabel('x/c', color='#CCCCCC', fontsize=9)
         ax.set_ylabel('y/c', color='#CCCCCC', fontsize=9)
         ax.tick_params(colors='#888888', labelsize=8)
@@ -452,7 +453,7 @@ def build_report(
         title=f"{airfoil_name} — {ice_type} Ice at {temp_c} C, {lwc} g/m3, {mvd} um MVD"
     )
     if img_buf:
-        slide.shapes.add_picture(img_buf, Inches(0.5), Inches(1.3), Inches(12.3), Inches(5.5))
+        slide.shapes.add_picture(img_buf, Inches(0.5), Inches(1.3), Inches(12.3))
     else:
         _add_textbox(slide, 2, 3, 8, 1, "[Ice shape plot — install matplotlib for images]",
                      font_size=16, color=TEXT_GRAY, alignment=PP_ALIGN.CENTER)
