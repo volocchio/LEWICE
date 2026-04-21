@@ -631,6 +631,20 @@ def _chord_units(chord_m):
     return chord_m, chord_in
 
 
+def _image_preserve_aspect(buf, max_width, max_height=None):
+    """Return an RLImage scaled to max_width (and optional max_height) preserving the PNG's pixel aspect ratio."""
+    reader = ImageReader(buf)
+    iw, ih = reader.getSize()
+    buf.seek(0)
+    aspect = ih / float(iw) if iw else 1.0
+    width = max_width
+    height = width * aspect
+    if max_height is not None and height > max_height:
+        height = max_height
+        width = height / aspect if aspect else max_width
+    return RLImage(buf, width=width, height=height)
+
+
 def build_pdf_report(
     project_name="Aircraft Icing Analysis",
     airfoil_name="NACA 0012",
@@ -782,7 +796,7 @@ def build_pdf_report(
         height_px=640,
     )
     if full_buf:
-        story.append(RLImage(full_buf, width=6.9 * inch))
+        story.append(_image_preserve_aspect(full_buf, max_width=6.9 * inch))
     else:
         story.append(Paragraph("Matplotlib not available: full-airfoil plot could not be rendered.", body))
 
@@ -795,7 +809,7 @@ def build_pdf_report(
     )
     if le_buf:
         story.append(Spacer(1, 0.08 * inch))
-        story.append(RLImage(le_buf, width=6.9 * inch, height=3.5 * inch))
+        story.append(_image_preserve_aspect(le_buf, max_width=6.9 * inch))
     else:
         story.append(Paragraph("Matplotlib not available: LE detail plot could not be rendered.", body))
 
