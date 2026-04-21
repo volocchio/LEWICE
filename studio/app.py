@@ -21,7 +21,7 @@ from lewice_engine.input_builder import (
 )
 from lewice_engine.output_parser import parse_clean_airfoil, parse_ice_shape, compute_ice_metrics
 from airfoils.naca_library import naca4, write_xyd, COMMON_AIRFOILS
-from reports.generator import build_report, _classify_ice, _assess_risk
+from reports.generator import build_report, build_pdf_report, _classify_ice, _assess_risk
 
 # ---------- Page Config ----------
 st.set_page_config(
@@ -486,7 +486,9 @@ with tab4:
         manual_output_dir = st.text_input("Path to LEWICE output directory (containing final1.dat)", value="")
         st.caption("Tip: You usually do not need this. Prefer Latest LEWICE run.")
 
-    if st.button("Export Certification Report (.pptx)", type="primary"):
+    report_format = st.radio("Report Format", ["PPTX", "PDF"], horizontal=True)
+
+    if st.button(f"Export Certification Report (.{report_format.lower()})", type="primary"):
         with st.spinner("Generating certification report..."):
             clean_coords = None
             ice_coords = None
@@ -530,11 +532,11 @@ with tab4:
             if clean_coords is None and airfoil_choice != "Upload Custom .xyd" and designation and airfoil_is_valid:
                 clean_coords = naca4(designation, n_points=80)
 
-            report_buf = build_report(
-                project_name=project_name,
-                airfoil_name=airfoil_label,
-                chord_m=chord,
-                conditions={
+            report_kwargs = {
+                "project_name": project_name,
+                "airfoil_name": airfoil_label,
+                "chord_m": chord,
+                "conditions": {
                     "speed_ktas": speed_ktas,
                     "altitude_ft": altitude_ft,
                     "temp_c": temp_c,
@@ -543,22 +545,31 @@ with tab4:
                     "exposure_min": exposure_min,
                     "aoa_deg": aoa,
                 },
-                clean_coords=clean_coords,
-                ice_coords=ice_coords,
-                impingement_data=impingement,
-                max_thickness_mm=max_thickness_mm,
-                analyst_name=analyst_name,
-                notes=report_notes,
-            )
+                "clean_coords": clean_coords,
+                "ice_coords": ice_coords,
+                "impingement_data": impingement,
+                "max_thickness_mm": max_thickness_mm,
+                "analyst_name": analyst_name,
+                "notes": report_notes,
+            }
+
+            if report_format == "PDF":
+                report_buf = build_pdf_report(**report_kwargs)
+                report_ext = "pdf"
+                report_mime = "application/pdf"
+            else:
+                report_buf = build_report(**report_kwargs)
+                report_ext = "pptx"
+                report_mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
             risk_level, risk_desc = _assess_risk(max_thickness_mm)
             st.success(f"Report generated!  Max thickness: {max_thickness_mm:.1f} mm  |  "
                        f"Ice type: {ice_type_preview}  |  Risk: {risk_level}")
 
             st.download_button(
-                label="Download Report (.pptx)",
+                label=f"Download Report (.{report_ext})",
                 data=report_buf,
-                file_name=f"LEWICE_Report_{project_name.replace(' ', '_')}.pptx",
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                file_name=f"LEWICE_Report_{project_name.replace(' ', '_')}.{report_ext}",
+                mime=report_mime,
                 type="primary",
             )

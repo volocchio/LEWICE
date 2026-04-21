@@ -12,6 +12,20 @@ from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    Image as RLImage,
+    PageBreak,
+)
 
 # ── Brand Colors ──
 NAVY       = RGBColor(0x0B, 0x1A, 0x2E)
@@ -23,6 +37,10 @@ TEXT_GRAY  = RGBColor(0x4A, 0x4A, 0x4A)
 GREEN      = RGBColor(0x28, 0xA7, 0x45)
 YELLOW     = RGBColor(0xE0, 0xA8, 0x00)
 RED        = RGBColor(0xDC, 0x35, 0x45)
+
+REPORTS_DIR = os.path.dirname(__file__)
+STUDIO_DIR = os.path.abspath(os.path.join(REPORTS_DIR, ".."))
+DEFAULT_LOGO_PATH = os.path.join(STUDIO_DIR, "assets", "tamarack-logo.png")
 
 
 def _add_background(slide, color=NAVY):
@@ -297,6 +315,7 @@ def build_report(
     mvd = conditions.get("mvd", 20)
     ice_type = _classify_ice(temp_c, lwc, mvd)
     risk_level, risk_desc = _assess_risk(max_thickness_mm, ice_type)
+    chord_in = chord_m * 39.3700787402
 
     # ================================================================
     # SLIDE 1: Title
@@ -317,7 +336,7 @@ def build_report(
     _add_gold_line(slide, 1.0, 3.4, 4.0)
     _add_textbox(slide, 1.0, 3.7, 11, 0.5, project_name,
                  font_size=20, color=LIGHT_GRAY)
-    _add_textbox(slide, 1.0, 4.3, 5, 0.4, f"Airfoil: {airfoil_name}  |  Chord: {chord_m:.3f} m",
+    _add_textbox(slide, 1.0, 4.3, 6.5, 0.4, f"Airfoil: {airfoil_name}  |  Chord: {chord_m:.3f} m ({chord_in:.2f} in)",
                  font_size=13, color=LIGHT_GRAY)
     _add_textbox(slide, 1.0, 4.8, 5, 0.4, f"Date: {now}",
                  font_size=12, color=TEXT_GRAY)
@@ -368,7 +387,7 @@ def build_report(
         ("Median Volume Diameter", f"{mvd}", "microns"),
         ("Exposure Time", f"{conditions.get('exposure_min', 'N/A')}", "min"),
         ("Angle of Attack", f"{conditions.get('aoa_deg', 'N/A')}", "deg"),
-        ("Chord Length", f"{chord_m:.4f}", "m"),
+        ("Chord Length", f"{chord_m:.4f} / {chord_in:.2f}", "m / in"),
         ("Ice Type (Predicted)", ice_type, ""),
     ]
 
@@ -598,6 +617,268 @@ def build_report(
     # Save to buffer
     buf = io.BytesIO()
     prs.save(buf)
+    buf.seek(0)
+    return buf
+
+
+def _chord_units(chord_m):
+    chord_in = chord_m * 39.3700787402
+    return chord_m, chord_in
+
+
+def build_pdf_report(
+    project_name="Aircraft Icing Analysis",
+    airfoil_name="NACA 0012",
+    chord_m=0.9144,
+    conditions=None,
+    clean_coords=None,
+    ice_coords=None,
+    impingement_data=None,
+    max_thickness_mm=0.0,
+    analyst_name="",
+    notes="",
+    logo_path=DEFAULT_LOGO_PATH,
+):
+    """Build a certification-style PDF report for FAA icing analysis workflows."""
+    if conditions is None:
+        conditions = {}
+
+    now = datetime.datetime.now().strftime("%B %d, %Y")
+    temp_c = float(conditions.get("temp_c", -10) or -10)
+    lwc = float(conditions.get("lwc", 0.5) or 0.5)
+    mvd = float(conditions.get("mvd", 20) or 20)
+    ice_type = _classify_ice(temp_c, lwc, mvd)
+    risk_level, risk_desc = _assess_risk(max_thickness_mm, ice_type)
+    chord_m_val, chord_in = _chord_units(chord_m)
+
+    risk_rgb = {
+        "LOW": colors.HexColor("#28A745"),
+        "MEDIUM": colors.HexColor("#E0A800"),
+        "HIGH": colors.HexColor("#DC3545"),
+    }.get(risk_level, colors.HexColor("#E0A800"))
+    risk_hex = {
+        "LOW": "#28A745",
+        "MEDIUM": "#E0A800",
+        "HIGH": "#DC3545",
+    }.get(risk_level, "#E0A800")
+
+    regulations = [
+        "14 CFR Part 25, Appendix C - Icing Envelope (continuous maximum and intermittent maximum).",
+        "14 CFR 25.1419 - Ice protection system capability for dispatch and operation in icing.",
+        "FAA AC 20-73A - Aircraft Ice Protection guidance for analysis and substantiation practices.",
+        "NASA LEWICE User/Validation references for computational ice accretion prediction methods.",
+    ]
+
+    toc_sections = [
+        "1. Executive Summary",
+        "2. Applicable Regulations and Guidance",
+        "3. LEWICE Theory and Method Basis",
+        "4. Icing Conditions and Inputs",
+        "5. Ice Shape Results (Full Airfoil and LE Detail)",
+        "6. Impingement Limits and Ice Metrics",
+        "7. Risk Assessment and Recommendations",
+        "8. Analyst Notes",
+    ]
+
+    theory_paras = [
+        "LEWICE computes droplet trajectories, collection efficiency, and thermodynamic freezing behavior along the airfoil surface to estimate accreted ice geometry.",
+        "The solver combines airflow, droplet impingement physics, and an energy balance to resolve whether incoming liquid water freezes, runs back, or sheds.",
+        "Predicted geometry (for example horn or rime shapes) is then used as a certification input for aerodynamic impact and ice protection capability assessment.",
+    ]
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=letter,
+        leftMargin=0.6 * inch,
+        rightMargin=0.6 * inch,
+        topMargin=1.0 * inch,
+        bottomMargin=0.65 * inch,
+        title=f"{project_name} - LEWICE Certification Report",
+        author=analyst_name or "LEWICE Studio",
+    )
+
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=17, leading=21, textColor=colors.HexColor("#0B1A2E"), spaceAfter=8)
+    h2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=13, leading=17, textColor=colors.HexColor("#1A3A5C"), spaceAfter=6)
+    body = ParagraphStyle("Body", parent=styles["BodyText"], fontSize=10, leading=13, spaceAfter=6)
+    small = ParagraphStyle("Small", parent=styles["BodyText"], fontSize=8.5, leading=11, textColor=colors.HexColor("#4A4A4A"))
+
+    story = []
+
+    story.append(Paragraph("FAA-Style Icing Certification Report", h1))
+    story.append(Paragraph(f"<b>Project:</b> {project_name}", body))
+    story.append(Paragraph(f"<b>Airfoil:</b> {airfoil_name}", body))
+    story.append(Paragraph(f"<b>Chord:</b> {chord_m_val:.4f} m ({chord_in:.2f} in)", body))
+    story.append(Paragraph(f"<b>Date:</b> {now}", body))
+    if analyst_name:
+        story.append(Paragraph(f"<b>Analyst:</b> {analyst_name}", body))
+    story.append(Spacer(1, 0.1 * inch))
+    story.append(Paragraph(f"<b>Executive Risk:</b> <font color='{risk_hex}'>{risk_level}</font>", body))
+    story.append(Paragraph(risk_desc, body))
+    story.append(PageBreak())
+
+    story.append(Paragraph("Table of Contents", h1))
+    for item in toc_sections:
+        story.append(Paragraph(item, body))
+    story.append(PageBreak())
+
+    story.append(Paragraph("1. Executive Summary", h1))
+    story.append(Paragraph(
+        "This report summarizes NASA LEWICE-generated ice accretion geometry and certification-relevant metrics for the stated flight and icing conditions.",
+        body,
+    ))
+    story.append(Paragraph(
+        f"Predicted ice type is <b>{ice_type}</b> with maximum estimated leading-edge accretion of <b>{max_thickness_mm:.1f} mm ({max_thickness_mm/25.4:.3f} in)</b>.",
+        body,
+    ))
+
+    story.append(Paragraph("2. Applicable Regulations and Guidance", h1))
+    for line in regulations:
+        story.append(Paragraph(f"- {line}", body))
+
+    story.append(Paragraph("3. LEWICE Theory and Method Basis", h1))
+    for para in theory_paras:
+        story.append(Paragraph(para, body))
+
+    story.append(PageBreak())
+    story.append(Paragraph("4. Icing Conditions and Inputs", h1))
+    cond_rows = [
+        ["Parameter", "Value", "Unit"],
+        ["Freestream Velocity", f"{conditions.get('speed_ktas', 'N/A')}", "KTAS"],
+        ["Altitude", f"{conditions.get('altitude_ft', 'N/A')}", "ft MSL"],
+        ["Static Temperature", f"{temp_c:.2f}", "deg C"],
+        ["Liquid Water Content", f"{lwc:.3f}", "g/m^3"],
+        ["Median Volume Diameter", f"{mvd:.1f}", "microns"],
+        ["Exposure Time", f"{conditions.get('exposure_min', 'N/A')}", "min"],
+        ["Angle of Attack", f"{conditions.get('aoa_deg', 'N/A')}", "deg"],
+        ["Chord Length", f"{chord_m_val:.4f} / {chord_in:.2f}", "m / in"],
+    ]
+    cond_table = Table(cond_rows, colWidths=[2.8 * inch, 2.3 * inch, 1.4 * inch])
+    cond_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#C8A84E")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0B1A2E")),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#B0B0B0")),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(cond_table)
+    story.append(Spacer(1, 0.12 * inch))
+    story.append(Paragraph(f"Predicted ice type: <b>{ice_type}</b>", body))
+
+    story.append(Paragraph("5. Ice Shape Results (Full Airfoil and LE Detail)", h1))
+    full_buf = generate_ice_shape_image(
+        clean_coords,
+        ice_coords,
+        title=f"{airfoil_name} - Full Airfoil",
+        width_px=1200,
+        height_px=640,
+    )
+    if full_buf:
+        story.append(RLImage(full_buf, width=6.9 * inch, height=3.5 * inch))
+    else:
+        story.append(Paragraph("Matplotlib not available: full-airfoil plot could not be rendered.", body))
+
+    le_buf = generate_le_detail_image(
+        clean_coords,
+        ice_coords,
+        title=f"Leading Edge Detail - {max_thickness_mm:.1f} mm",
+        width_px=1200,
+        height_px=640,
+    )
+    if le_buf:
+        story.append(Spacer(1, 0.08 * inch))
+        story.append(RLImage(le_buf, width=6.9 * inch, height=3.5 * inch))
+    else:
+        story.append(Paragraph("Matplotlib not available: LE detail plot could not be rendered.", body))
+
+    story.append(PageBreak())
+    story.append(Paragraph("6. Impingement Limits and Ice Metrics", h1))
+    if impingement_data:
+        imp_rows = [["Metric", "x/c", "y/c", "s/c"]]
+        if "upper" in impingement_data:
+            u = impingement_data["upper"]
+            imp_rows.append(["Upper Limit", f"{u.get('x', 0):.6f}", f"{u.get('y', 0):.6f}", f"{u.get('s', 0):.6f}"])
+        if "lower" in impingement_data:
+            lo = impingement_data["lower"]
+            imp_rows.append(["Lower Limit", f"{lo.get('x', 0):.6f}", f"{lo.get('y', 0):.6f}", f"{lo.get('s', 0):.6f}"])
+        if "stagnation" in impingement_data:
+            stg = impingement_data["stagnation"]
+            imp_rows.append(["Stagnation", f"{stg.get('x', 0):.6f}", f"{stg.get('y', 0):.6f}", "-"])
+
+        imp_table = Table(imp_rows, colWidths=[2.0 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
+        imp_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#C8A84E")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0B1A2E")),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#B0B0B0")),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ]))
+        story.append(imp_table)
+        story.append(Spacer(1, 0.12 * inch))
+    else:
+        story.append(Paragraph("Impingement limit data not available for this run.", body))
+
+    story.append(Paragraph(f"Maximum ice thickness: <b>{max_thickness_mm:.1f} mm ({max_thickness_mm/25.4:.3f} in)</b>", body))
+    story.append(Paragraph(f"Risk assessment: <font color='{risk_hex}'><b>{risk_level}</b></font> - {risk_desc}", body))
+    story.append(Paragraph(f"Clean airfoil points: {len(clean_coords) if clean_coords else 'N/A'}", body))
+    story.append(Paragraph(f"Iced airfoil points: {len(ice_coords) if ice_coords else 'N/A'}", body))
+
+    story.append(Paragraph("7. Risk Assessment and Recommendations", h1))
+    if risk_level == "LOW":
+        recs = [
+            "Ice accretion is within acceptable limits for baseline operation.",
+            "Standard ice protection activation procedures are likely sufficient.",
+            "Archive this run in certification records as supporting evidence.",
+        ]
+    elif risk_level == "MEDIUM":
+        recs = [
+            "Perform aerodynamic penalty assessment (stall margin and drag rise).",
+            "Verify protected surface coverage against impingement limits.",
+            "Run additional exposure-time sensitivity points for margin.",
+        ]
+    else:
+        recs = [
+            "Critical accretion detected; complete high-fidelity aerodynamic substantiation.",
+            "Expand parametric runs across Appendix C critical combinations.",
+            "Present results for DER/ODA review prior to certification credit request.",
+        ]
+    for rec in recs:
+        story.append(Paragraph(f"- {rec}", body))
+
+    story.append(Paragraph("8. Analyst Notes", h1))
+    story.append(Paragraph(notes if notes else "No additional analyst notes provided.", body))
+    story.append(Spacer(1, 0.2 * inch))
+    story.append(Paragraph(
+        "Generated by LEWICE Studio using NASA LEWICE 3.2 computational output for certification-oriented reporting.",
+        small,
+    ))
+
+    def draw_header_footer(canvas, document):
+        canvas.saveState()
+        page_w, page_h = letter
+
+        canvas.setFillColor(colors.HexColor("#0B1A2E"))
+        canvas.rect(0, page_h - 0.62 * inch, page_w, 0.62 * inch, stroke=0, fill=1)
+        canvas.setFillColor(colors.HexColor("#C8A84E"))
+        canvas.rect(0, page_h - 0.64 * inch, page_w, 0.02 * inch, stroke=0, fill=1)
+
+        if logo_path and os.path.isfile(logo_path):
+            canvas.drawImage(ImageReader(logo_path), 0.62 * inch, page_h - 0.54 * inch, width=1.05 * inch, height=0.34 * inch, preserveAspectRatio=True, mask='auto')
+
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 10)
+        canvas.drawRightString(page_w - 0.62 * inch, page_h - 0.36 * inch, "Tamarack Aerospace - Icing Certification Report")
+
+        canvas.setFillColor(colors.HexColor("#4A4A4A"))
+        canvas.setFont("Helvetica", 8)
+        canvas.drawString(0.62 * inch, 0.42 * inch, f"LEWICE Studio | {project_name} | {now}")
+        canvas.drawRightString(page_w - 0.62 * inch, 0.42 * inch, f"Page {document.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
     buf.seek(0)
     return buf
 
