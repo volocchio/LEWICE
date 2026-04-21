@@ -84,27 +84,27 @@ cat >"$OUT_FILE" <<HTML
  <details class="folder" open>
   <summary>Tamarack Folder</summary>
   <div class="folder-content">
+   <div class="card"><h2><a href="https://leasing-model.voloaltro.tech" target="_blank" rel="noreferrer">Leasing Model</a></h2><p class="meta">Latest git update: ${LM}</p><p><code>leasing-model.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://mission-analysis.voloaltro.tech" target="_blank" rel="noreferrer">Tamarack Mission Analysis</a></h2><p class="meta">Latest git update: ${MA}</p><p><code>mission-analysis.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://tamarack-wat.voloaltro.tech" target="_blank" rel="noreferrer">Tamarack WAT Analysis</a></h2><p class="meta">Latest git update: ${MA}</p><p><code>tamarack-wat.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://tamarack-project-financials.voloaltro.tech" target="_blank" rel="noreferrer">Tamarack Project Financials</a></h2><p class="meta">Latest git update: ${TPF}</p><p><code>tamarack-project-financials.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://dataroom.voloaltro.tech" target="_blank" rel="noreferrer">Data Room</a></h2><p class="meta">Latest git update: ${DR}</p><p><code>dataroom.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://aircraft-revenue.voloaltro.tech" target="_blank" rel="noreferrer">STC Cost &amp; Revenue Estimator</a></h2><p class="meta">Latest git update: ${AR}</p><p><code>aircraft-revenue.voloaltro.tech</code></p></div>
+   <div class="card"><h2><a href="https://lru-tracker.voloaltro.tech" target="_blank" rel="noreferrer">LRU Tracker</a></h2><p class="meta">Latest git update: ${LRU}</p><p><code>lru-tracker.voloaltro.tech</code></p></div>
+   <div class="card"><h2><a href="https://sales-training.voloaltro.tech" target="_blank" rel="noreferrer">SMARTWING Sales Training</a></h2><p class="meta">Latest git update: ${ST}</p><p><code>sales-training.voloaltro.tech</code></p></div>
+   <div class="card"><h2><a href="https://cfm.voloaltro.tech" target="_blank" rel="noreferrer">Cash Flow Meeting Triage</a></h2><p class="meta">Latest git update: ${CFM}</p><p><code>cfm.voloaltro.tech</code></p></div>
+   <div class="card"><h2><a href="https://lewice.voloaltro.tech" target="_blank" rel="noreferrer">LEWICE</a></h2><p class="meta">Latest git update: ${LEW}</p><p><code>lewice.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://tels.voloaltro.tech" target="_blank" rel="noreferrer">TELS External Loads</a></h2><p class="meta">Latest git update: ${TELS}</p><p><code>tels.voloaltro.tech</code></p></div>
-   <div class="card"><h2><a href="https://turnback.voloaltro.tech" target="_blank" rel="noreferrer">Turnback Simulator</a></h2><p class="meta">Latest git update: ${TB}</p><p><code>turnback.voloaltro.tech</code></p></div>
   </div>
  </details>
 
  <details class="folder" open>
   <summary>VoloAltro Folder</summary>
   <div class="folder-content">
-   <div class="card"><h2><a href="https://leasing-model.voloaltro.tech" target="_blank" rel="noreferrer">Leasing Model</a></h2><p class="meta">Latest git update: ${LM}</p><p><code>leasing-model.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://aglaze.voloaltro.tech" target="_blank" rel="noreferrer">AGLAZE</a></h2><p class="meta">Latest git update: ${AG}</p><p><code>aglaze.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://jet-sales-crm.voloaltro.tech" target="_blank" rel="noreferrer">Jet Sales CRM</a></h2><p class="meta">Latest git update: ${JS}</p><p><code>jet-sales-crm.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://groundhog.voloaltro.tech" target="_blank" rel="noreferrer">GroundHog</a></h2><p class="meta">Latest git update: ${GH}</p><p><code>groundhog.voloaltro.tech</code></p></div>
-   <div class="card"><h2><a href="https://lru-tracker.voloaltro.tech" target="_blank" rel="noreferrer">LRU Tracker</a></h2><p class="meta">Latest git update: ${LRU}</p><p><code>lru-tracker.voloaltro.tech</code></p></div>
-   <div class="card"><h2><a href="https://sales-training.voloaltro.tech" target="_blank" rel="noreferrer">SMARTWING Sales Training</a></h2><p class="meta">Latest git update: ${ST}</p><p><code>sales-training.voloaltro.tech</code></p></div>
-   <div class="card"><h2><a href="https://cfm.voloaltro.tech" target="_blank" rel="noreferrer">Cash Flow Meeting Triage</a></h2><p class="meta">Latest git update: ${CFM}</p><p><code>cfm.voloaltro.tech</code></p></div>
-   <div class="card"><h2><a href="https://lewice.voloaltro.tech" target="_blank" rel="noreferrer">LEWICE</a></h2><p class="meta">Latest git update: ${LEW}</p><p><code>lewice.voloaltro.tech</code></p></div>
+   <div class="card"><h2><a href="https://turnback.voloaltro.tech" target="_blank" rel="noreferrer">Turnback Simulator</a></h2><p class="meta">Latest git update: ${TB}</p><p><code>turnback.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://ash.voloaltro.tech" target="_blank" rel="noreferrer">ASH</a></h2><p class="meta">Latest git update: ${ASH}</p><p><code>ash.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://shy.voloaltro.tech" target="_blank" rel="noreferrer">Sandpoint Hot Yoga</a></h2><p class="meta">Latest git update: ${SHY}</p><p><code>shy.voloaltro.tech</code></p></div>
    <div class="card"><h2><a href="https://spoton.voloaltro.tech" target="_blank" rel="noreferrer">SpotOn Rate Calculator</a></h2><p class="meta">Latest git update: ${SP}</p><p><code>spoton.voloaltro.tech</code></p></div>
