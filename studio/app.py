@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import tempfile
+from datetime import datetime
 
 # Add studio to path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -41,6 +42,92 @@ st.markdown("""
 
 st.markdown('<p class="main-header">LEWICE Studio</p>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Aircraft icing analysis made simple. Powered by NASA LEWICE 3.2.</p>', unsafe_allow_html=True)
+
+APP_DIR = os.path.dirname(__file__)
+REPO_ROOT = os.path.abspath(os.path.join(APP_DIR, ".."))
+
+
+def _demo_sources():
+    demo_xyd = os.path.join(REPO_ROOT, "Inputs", "case1.xyd")
+    demo_ice_candidates = [
+        os.path.join(APP_DIR, "test_run", "case1", "final1.dat"),
+        os.path.join(REPO_ROOT, "results", "case22", "final1.dat"),
+    ]
+
+    demo_ice = None
+    for candidate in demo_ice_candidates:
+        if os.path.isfile(candidate):
+            demo_ice = candidate
+            break
+
+    return demo_xyd, demo_ice
+
+
+def _remember_run(output_dir, xyd_path=None):
+    if "saved_runs" not in st.session_state:
+        st.session_state["saved_runs"] = []
+
+    final_path = os.path.join(output_dir, "final1.dat")
+    if not os.path.isfile(final_path):
+        return
+
+    existing = [r for r in st.session_state["saved_runs"] if r.get("output_dir") == output_dir]
+    if existing:
+        return
+
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    st.session_state["saved_runs"].insert(
+        0,
+        {
+            "label": f"Run {stamp}",
+            "output_dir": output_dir,
+            "final_path": final_path,
+            "xyd_path": xyd_path,
+        },
+    )
+
+
+def _collect_output_sources():
+    candidates = []
+    seen = set()
+
+    def add_candidate(label, output_dir, xyd_path=None):
+        final_path = os.path.join(output_dir, "final1.dat")
+        if not os.path.isfile(final_path):
+            return
+        if output_dir in seen:
+            return
+        seen.add(output_dir)
+        candidates.append(
+            {
+                "label": label,
+                "output_dir": output_dir,
+                "final_path": final_path,
+                "xyd_path": xyd_path,
+            }
+        )
+
+    last_run_dir = st.session_state.get("last_run_dir")
+    if last_run_dir:
+        add_candidate("Latest LEWICE run (this session)", last_run_dir, st.session_state.get("last_run_xyd"))
+
+    for saved in st.session_state.get("saved_runs", []):
+        add_candidate(saved.get("label", "Saved run"), saved["output_dir"], saved.get("xyd_path"))
+
+    scan_roots = [
+        os.path.join(REPO_ROOT, "results"),
+        os.path.join(REPO_ROOT, "grid_examples"),
+        os.path.join(APP_DIR, "test_run"),
+    ]
+    for root in scan_roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _, filenames in os.walk(root):
+            if "final1.dat" in filenames:
+                rel = os.path.relpath(dirpath, REPO_ROOT)
+                add_candidate(f"Detected: {rel}", dirpath)
+
+    return candidates
 
 # ---------- Sidebar: Configuration ----------
 st.sidebar.header("Aircraft & Flight Conditions")
@@ -189,6 +276,7 @@ with tab3:
                 st.success(f"LEWICE completed in {result['elapsed_seconds']}s")
                 st.session_state["last_run_dir"] = tmp_dir
                 st.session_state["last_run_xyd"] = xyd_path
+                _remember_run(tmp_dir, xyd_path)
             else:
                 st.error(f"LEWICE failed: {result.get('message', result.get('stderr', 'Unknown error'))}")
 
@@ -196,8 +284,7 @@ with tab3:
     st.subheader("Ice Shape Visualization")
 
     # Determine which data to show: last run > demo case 1 > clean only
-    demo_xyd = os.path.join(os.path.dirname(__file__), "..", "Inputs", "case1.xyd")
-    demo_ice = os.path.join(os.path.dirname(__file__), "test_run", "case1", "final1.dat")
+    demo_xyd, demo_ice = _demo_sources()
     run_dir = st.session_state.get("last_run_dir", None)
 
     clean_plot = None
@@ -320,16 +407,51 @@ with tab4:
 
     st.divider()
 
-    # Data source
-    data_source = st.radio("Ice Shape Data Source", [
-        "Use demo Case 1 data (NASA validation)",
-        "Load from LEWICE output folder",
-    ])
+    output_sources = _collect_output_sources()
+    demo_xyd, demo_ice = _demo_sources()
 
-    ice_output_dir = None
-    if data_source == "Load from LEWICE output folder":
-        ice_output_dir = st.text_input(
-            "Path to LEWICE output directory (containing final1.dat)", value="")
+    st.markdown("**Choose report data source**")
+    data_source = st.radio(
+        "Ice Shape Data Source",
+        [
+            "Latest LEWICE run",
+            "Pick from detected outputs",
+            "Demo Case",
+            "Manual folder path",
+        ],
+    )
+
+    selected_source = None
+    manual_output_dir = ""
+
+    if data_source == "Latest LEWICE run":
+        if output_sources:
+            selected_source = output_sources[0]
+            st.info(f"Using: {selected_source['output_dir']}")
+        else:
+            st.warning("No LEWICE run found yet. Run a case first or pick another source option.")
+    elif data_source == "Pick from detected outputs":
+        if output_sources:
+            labels = [s["label"] for s in output_sources]
+            choice = st.selectbox("Detected output folders", labels)
+            selected_source = output_sources[labels.index(choice)]
+            st.caption(selected_source["output_dir"])
+        else:
+            st.warning("No output folders with final1.dat were detected.")
+    elif data_source == "Demo Case":
+        if demo_ice and os.path.isfile(demo_xyd):
+            selected_source = {
+                "label": "Demo Case",
+                "output_dir": os.path.dirname(demo_ice),
+                "final_path": demo_ice,
+                "xyd_path": demo_xyd,
+            }
+            st.info(f"Using demo data from: {selected_source['output_dir']}")
+        else:
+            st.warning("Demo files are missing in this build. Use latest run or detected outputs.")
+    else:
+        manual_output_dir = st.text_input("Path to LEWICE output directory (containing final1.dat)", value="")
+        st.caption("Tip: You usually do not need this. Prefer Latest LEWICE run.")
 
     if st.button("Export Certification Report (.pptx)", type="primary"):
         with st.spinner("Generating certification report..."):
@@ -338,35 +460,39 @@ with tab4:
             max_thickness_mm = 0.0
             impingement = None
 
-            if data_source == "Use demo Case 1 data (NASA validation)":
-                demo_xyd = os.path.join(os.path.dirname(__file__), "..", "Inputs", "case1.xyd")
-                demo_ice = os.path.join(os.path.dirname(__file__), "test_run", "case1", "final1.dat")
-
-                if os.path.isfile(demo_xyd) and os.path.isfile(demo_ice):
-                    clean_coords = parse_clean_airfoil(demo_xyd)
-                    ice_coords = parse_ice_shape(demo_ice)
-                    min_x = min(c[0] for c in ice_coords)
-                    max_thickness_mm = abs(min_x) * chord * 1000
-                    impingement = {
-                        "upper": {"x": 0.003625, "y": 0.005619, "s": 0.020414},
-                        "lower": {"x": 0.145164, "y": -0.030770, "s": -0.143421},
-                    }
-                else:
-                    st.error("Demo data not found. Run LEWICE Case 1 first.")
-                    st.stop()
-            else:
-                if ice_output_dir and os.path.isdir(ice_output_dir):
-                    final_path = os.path.join(ice_output_dir, "final1.dat")
+            if data_source == "Manual folder path":
+                if manual_output_dir and os.path.isdir(manual_output_dir):
+                    final_path = os.path.join(manual_output_dir, "final1.dat")
                     if os.path.isfile(final_path):
-                        ice_coords = parse_ice_shape(final_path)
-                        min_x = min(c[0] for c in ice_coords)
-                        max_thickness_mm = abs(min_x) * chord * 1000
+                        selected_source = {
+                            "label": "Manual folder",
+                            "output_dir": manual_output_dir,
+                            "final_path": final_path,
+                            "xyd_path": None,
+                        }
                     else:
-                        st.error(f"final1.dat not found in {ice_output_dir}")
+                        st.error(f"final1.dat not found in {manual_output_dir}")
                         st.stop()
                 else:
                     st.error("Provide a valid output directory path.")
                     st.stop()
+
+            if selected_source is None:
+                st.error("No valid data source selected for report export.")
+                st.stop()
+
+            if selected_source.get("xyd_path") and os.path.isfile(selected_source["xyd_path"]):
+                clean_coords = parse_clean_airfoil(selected_source["xyd_path"])
+
+            ice_coords = parse_ice_shape(selected_source["final_path"])
+            min_x = min(c[0] for c in ice_coords)
+            max_thickness_mm = abs(min_x) * chord * 1000
+
+            if data_source == "Demo Case":
+                impingement = {
+                    "upper": {"x": 0.003625, "y": 0.005619, "s": 0.020414},
+                    "lower": {"x": 0.145164, "y": -0.030770, "s": -0.143421},
+                }
 
             if clean_coords is None and airfoil_choice != "Upload Custom .xyd":
                 designation = COMMON_AIRFOILS[airfoil_choice]
