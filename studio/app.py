@@ -64,6 +64,13 @@ st.sidebar.header("Icing Conditions")
 
 envelope_mode = st.sidebar.radio("Mode", ["Single Condition", "Appendix C Envelope", "Custom Batch"])
 
+MODE_HELP = {
+    "Single Condition": "Run one LEWICE case using the exact LWC, MVD, and exposure values set below.",
+    "Appendix C Envelope": "Preview and run against the FAA Appendix C standard condition set for certification-style sweeps.",
+    "Custom Batch": "Run multiple user-defined cases as a batch. Right now this is a planning mode label; batch execution UI is not wired in this page yet.",
+}
+st.sidebar.caption(MODE_HELP[envelope_mode])
+
 lwc = st.sidebar.number_input("LWC (g/m3)", value=0.54, min_value=0.05, max_value=3.0, step=0.05)
 mvd = st.sidebar.number_input("MVD (microns)", value=20.0, min_value=5.0, max_value=50.0, step=1.0)
 exposure_min = st.sidebar.number_input("Exposure Time (min)", value=6.0, min_value=0.5, max_value=45.0, step=0.5)
@@ -140,7 +147,7 @@ with tab2:
     if envelope_mode == "Appendix C Envelope":
         env_path = os.path.join(os.path.dirname(__file__), "envelopes", "appendix_c.json")
         if os.path.isfile(env_path):
-            with open(env_path) as f:
+            with open(env_path, encoding="utf-8-sig") as f:
                 envelope = json.load(f)
             st.info(f"Appendix C envelope loaded: {len(envelope['conditions'])} continuous + {len(envelope['intermittent_maximum'])} intermittent conditions")
             st.json(envelope["conditions"][:5])
