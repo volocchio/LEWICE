@@ -119,7 +119,21 @@ def generate_ice_shape_image(clean_coords, ice_coords, title="", width_px=900, h
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots(1, 1, figsize=(width_px/100, height_px/100), dpi=100)
+        # Compute data extents to set figure size proportional to actual aspect ratio
+        all_x = [p[0] for p in (clean_coords or [])] + [p[0] for p in (ice_coords or [])]
+        all_y = [p[1] for p in (clean_coords or [])] + [p[1] for p in (ice_coords or [])]
+        if all_x and all_y:
+            x_range = max(all_x) - min(all_x) or 1.0
+            y_range = max(all_y) - min(all_y) or 0.1
+            padding = 0.15  # fractional padding on each side
+            fw = x_range * (1 + 2 * padding)
+            fh = y_range * (1 + 2 * padding)
+            scale = (width_px / 100) / fw  # fit width to requested width_px
+            figsize = (fw * scale, fh * scale)
+        else:
+            figsize = (width_px / 100, height_px / 100)
+
+        fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=100)
         fig.patch.set_facecolor('#0B1A2E')
         ax.set_facecolor('#0B1A2E')
 
@@ -133,8 +147,7 @@ def generate_ice_shape_image(clean_coords, ice_coords, title="", width_px=900, h
             iy = [p[1] for p in ice_coords]
             ax.plot(ix, iy, color='#C8A84E', linewidth=2.0, label='Iced Airfoil')
 
-        # No set_aspect('equal') here — the airfoil y-range (~0.12) vs x-range (1.0)
-        # would leave massive dead space. Let the axes fill the figure naturally.
+        ax.set_aspect('equal')
         ax.set_xlabel('x/c', color='#CCCCCC', fontsize=9)
         ax.set_ylabel('y/c', color='#CCCCCC', fontsize=9)
         ax.tick_params(colors='#888888', labelsize=8)
