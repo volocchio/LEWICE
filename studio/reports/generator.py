@@ -777,7 +777,7 @@ def build_pdf_report(
         height_px=640,
     )
     if full_buf:
-        story.append(RLImage(full_buf, width=6.9 * inch, height=3.5 * inch))
+        story.append(RLImage(full_buf, width=6.9 * inch))
     else:
         story.append(Paragraph("Matplotlib not available: full-airfoil plot could not be rendered.", body))
 
