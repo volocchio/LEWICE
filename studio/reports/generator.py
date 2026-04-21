@@ -184,6 +184,75 @@ def generate_le_detail_image(clean_coords, ice_coords, title="Leading Edge Detai
         return None
 
 
+def generate_conditions_dashboard_image(conditions, max_thickness_mm, risk_level, width_px=700, height_px=500):
+    """Generate a compact dashboard image for conditions and severity."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        speed = float(conditions.get("speed_ktas", 0) or 0)
+        altitude = float(conditions.get("altitude_ft", 0) or 0)
+        temp = float(conditions.get("temp_c", -10) or -10)
+        lwc = float(conditions.get("lwc", 0.0) or 0.0)
+        mvd = float(conditions.get("mvd", 0.0) or 0.0)
+
+        # Normalize into 0..1 for an at-a-glance severity profile.
+        metrics = {
+            "Speed": min(max(speed / 300.0, 0.0), 1.0),
+            "Altitude": min(max(altitude / 20000.0, 0.0), 1.0),
+            "LWC": min(max(lwc / 1.2, 0.0), 1.0),
+            "MVD": min(max(mvd / 40.0, 0.0), 1.0),
+            "Ice Thick": min(max(max_thickness_mm / 25.0, 0.0), 1.0),
+            "Warmth": min(max((temp + 30.0) / 30.0, 0.0), 1.0),
+        }
+
+        labels = list(metrics.keys())
+        values = [metrics[k] for k in labels]
+
+        fig = plt.figure(figsize=(width_px / 100, height_px / 100), dpi=100)
+        fig.patch.set_facecolor("#0B1A2E")
+        gs = fig.add_gridspec(2, 1, height_ratios=[3.0, 1.1], hspace=0.32)
+
+        ax = fig.add_subplot(gs[0])
+        ax.set_facecolor("#0B1A2E")
+        bars = ax.barh(labels, values, color="#C8A84E", edgecolor="#E8E8E8", alpha=0.92)
+        ax.set_xlim(0, 1.0)
+        ax.invert_yaxis()
+        ax.set_title("Icing Severity Profile", color="#C8A84E", fontsize=12, fontweight="bold", pad=10)
+        ax.tick_params(colors="#CCCCCC", labelsize=9)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.grid(axis="x", color="#445066", alpha=0.35)
+
+        for bar, val in zip(bars, values):
+            ax.text(min(val + 0.03, 0.98), bar.get_y() + bar.get_height() / 2, f"{val * 100:.0f}%",
+                    va="center", ha="left", color="#FFFFFF", fontsize=8)
+
+        ax2 = fig.add_subplot(gs[1])
+        ax2.set_facecolor("#0B1A2E")
+        ax2.axis("off")
+        risk_color = {"LOW": "#28A745", "MEDIUM": "#E0A800", "HIGH": "#DC3545"}.get(risk_level, "#E0A800")
+        summary = (
+            f"Risk: {risk_level}   |   Temp: {temp:.1f} C   |   LWC: {lwc:.2f} g/m3   |   "
+            f"MVD: {mvd:.0f} um   |   Max Thickness: {max_thickness_mm:.1f} mm"
+        )
+        ax2.text(0.02, 0.60, summary, color="#FFFFFF", fontsize=10, fontweight="bold", transform=ax2.transAxes)
+        ax2.text(0.02, 0.20, "Higher bar values indicate more severe icing contributors for this scenario.",
+                 color="#AEB8C4", fontsize=8.5, transform=ax2.transAxes)
+        ax2.add_patch(plt.Rectangle((0.0, 0.02), 1.0, 0.04, transform=ax2.transAxes, color="#1A3A5C", ec="none"))
+        ax2.add_patch(plt.Rectangle((0.0, 0.02), 0.25 if risk_level == "LOW" else 0.6 if risk_level == "MEDIUM" else 0.9,
+                                    0.04, transform=ax2.transAxes, color=risk_color, ec="none"))
+
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight", facecolor=fig.get_facecolor())
+        plt.close(fig)
+        buf.seek(0)
+        return buf
+    except ImportError:
+        return None
+
+
 def build_report(
     project_name="Aircraft Icing Analysis",
     airfoil_name="NACA 0012",
@@ -326,19 +395,27 @@ def build_report(
                 cell.fill.solid()
                 cell.fill.fore_color.rgb = DARK_BLUE if i % 2 == 0 else NAVY
 
-    # Right side: key metrics
-    _add_textbox(slide, 8.0, 1.3, 4.5, 0.5, "Key Metrics", font_size=18, color=GOLD, bold=True)
+    # Right side: visual dashboard + key metrics
+    dash_buf = generate_conditions_dashboard_image(conditions, max_thickness_mm, risk_level)
+    _add_textbox(slide, 7.8, 1.1, 4.8, 0.4, "Condition Dashboard", font_size=14, color=GOLD, bold=True)
+    if dash_buf:
+        slide.shapes.add_picture(dash_buf, Inches(7.7), Inches(1.4), Inches(4.9), Inches(3.7))
+    else:
+        _add_textbox(slide, 7.9, 2.8, 4.4, 0.6, "Install matplotlib for dashboard visuals.",
+                     font_size=10, color=TEXT_GRAY, alignment=PP_ALIGN.CENTER)
+
+    _add_textbox(slide, 8.0, 5.2, 4.5, 0.5, "Key Metrics", font_size=16, color=GOLD, bold=True)
 
     metrics = [
         ("Max Ice Thickness", f"{max_thickness_mm:.1f} mm"),
         ("Ice Type", ice_type),
         ("Risk Assessment", risk_level),
     ]
-    y = 2.0
+    y = 5.7
     for label, value in metrics:
         _add_textbox(slide, 8.0, y, 4.5, 0.3, label, font_size=10, color=TEXT_GRAY)
-        _add_textbox(slide, 8.0, y + 0.3, 4.5, 0.5, value, font_size=22, color=GOLD, bold=True)
-        y += 1.0
+        _add_textbox(slide, 8.0, y + 0.22, 4.5, 0.38, value, font_size=16, color=GOLD, bold=True)
+        y += 0.58
 
     # ================================================================
     # SLIDE 3: Ice Shape — Full Airfoil
