@@ -365,7 +365,7 @@ with tab3:
             fill="toself", fillcolor="rgba(200,168,78,0.1)"
         ))
         fig3.update_layout(
-            xaxis=dict(range=[-0.05, 0.20]), yaxis=dict(range=[-0.08, 0.08], scaleanchor="x"),
+            xaxis=dict(range=[-0.08, 0.30]), yaxis=dict(range=[-0.12, 0.12], scaleanchor="x"),
             height=400, title="Leading Edge — Ice Accretion Detail",
             plot_bgcolor="#0B1A2E", paper_bgcolor="#0B1A2E",
             font=dict(color="#CCCCCC"), legend=dict(bgcolor="rgba(0,0,0,0)"),

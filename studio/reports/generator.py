@@ -160,8 +160,9 @@ def generate_le_detail_image(clean_coords, ice_coords, title="Leading Edge Detai
             ax.plot(ix, iy, color='#C8A84E', linewidth=2.5, label='Iced Airfoil')
             ax.fill(ix, iy, color='#C8A84E', alpha=0.15)
 
-        ax.set_xlim(-0.05, 0.20)
-        ax.set_ylim(-0.08, 0.08)
+        # Slightly wider window so LE shape is easier to read on slides.
+        ax.set_xlim(-0.08, 0.30)
+        ax.set_ylim(-0.12, 0.12)
         ax.set_aspect('equal')
         ax.set_xlabel('x/c', color='#CCCCCC', fontsize=9)
         ax.set_ylabel('y/c', color='#CCCCCC', fontsize=9)
