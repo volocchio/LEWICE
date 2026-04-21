@@ -165,7 +165,9 @@ if airfoil_choice == "Upload Custom .xyd":
 else:
     uploaded_xyd = None
 
-chord = st.sidebar.number_input("Chord Length (m)", value=0.9144, min_value=0.01, max_value=50.0, step=0.01)
+chord_in_input = st.sidebar.number_input("Chord Length (in)", value=36.0, min_value=0.5, max_value=1968.0, step=0.5)
+chord = chord_in_input * 0.0254  # convert to meters for LEWICE
+st.sidebar.caption(f"≈ {chord:.4f} m")
 aoa = st.sidebar.number_input("Angle of Attack (deg)", value=0.0, min_value=-15.0, max_value=25.0, step=0.5)
 
 st.sidebar.header("Flight Conditions")
