@@ -47,7 +47,11 @@ else
 fi
 caddy fmt --overwrite /etc/caddy/Caddyfile
 systemctl reload caddy
-/usr/local/bin/sync-and-update-portal.sh
+if [ -x /usr/local/bin/sync-and-update-portal.sh ]; then
+    /usr/local/bin/sync-and-update-portal.sh
+else
+    echo "Skipping portal sync: /usr/local/bin/sync-and-update-portal.sh not found"
+fi
 "@
 
 $remoteScriptLf = $remoteScript -replace "`r", ""
