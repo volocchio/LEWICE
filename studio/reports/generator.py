@@ -662,7 +662,15 @@ def build_pdf_report(
     if conditions is None:
         conditions = {}
 
-    now = datetime.datetime.now().strftime("%B %d, %Y")
+    now_dt = datetime.datetime.now()
+    now = now_dt.strftime("%B %d, %Y")
+    now_full = now_dt.strftime("%B %d, %Y %H:%M:%S %Z").strip()
+    if not now_dt.strftime("%Z"):
+        # tzname can be empty on naive datetimes; fall back to local tz abbreviation
+        try:
+            now_full = now_dt.astimezone().strftime("%B %d, %Y %H:%M:%S %Z").strip()
+        except Exception:
+            now_full = now_dt.strftime("%B %d, %Y %H:%M:%S")
     temp_c = float(conditions.get("temp_c", -10) or -10)
     lwc = float(conditions.get("lwc", 0.5) or 0.5)
     mvd = float(conditions.get("mvd", 20) or 20)
@@ -729,7 +737,7 @@ def build_pdf_report(
     story.append(Paragraph(f"<b>Project:</b> {project_name}", body))
     story.append(Paragraph(f"<b>Airfoil:</b> {airfoil_name}", body))
     story.append(Paragraph(f"<b>Chord:</b> {chord_m_val:.4f} m ({chord_in:.2f} in)", body))
-    story.append(Paragraph(f"<b>Date:</b> {now}", body))
+    story.append(Paragraph(f"<b>Generated:</b> {now_full}", body))
     if analyst_name:
         story.append(Paragraph(f"<b>Analyst:</b> {analyst_name}", body))
     story.append(Spacer(1, 0.1 * inch))
@@ -893,7 +901,7 @@ def build_pdf_report(
 
         canvas.setFillColor(colors.HexColor("#4A4A4A"))
         canvas.setFont("Helvetica", 8)
-        canvas.drawString(0.62 * inch, 0.42 * inch, f"LEWICE Studio | {project_name} | {now}")
+        canvas.drawString(0.62 * inch, 0.42 * inch, f"LEWICE Studio | {project_name} | {now_full}")
         canvas.drawRightString(page_w - 0.62 * inch, 0.42 * inch, f"Page {document.page}")
         canvas.restoreState()
 
