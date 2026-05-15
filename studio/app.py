@@ -4,6 +4,9 @@ Modern UI for NASA LEWICE aircraft icing simulation.
 No PhD in ice required.
 """
 import re
+import io as _io
+import tempfile
+import zipfile
 import streamlit as st
 import plotly.graph_objects as go
 import json
@@ -214,6 +217,18 @@ def _appendix_c_critical_points(envelope):
                 **row,
             })
     return selected
+
+
+def _zip_dir_to_bytes(dir_path):
+    """Return an in-memory zip of all files under dir_path."""
+    buf = _io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, _, files in os.walk(dir_path):
+            for fname in files:
+                full = os.path.join(root, fname)
+                arcname = os.path.relpath(full, start=dir_path)
+                zf.write(full, arcname)
+    return buf.getvalue()
 
 
 def _run_sweep(cases, airfoil_choice, designation, custom_points, uploaded_xyd,
@@ -731,32 +746,12 @@ with tab3:
     else:
         st.error(f"LEWICE executable not found at expected path. Place lewice.exe in the LEWICE root directory.")
 
-    default_output_root = st.session_state.get(
-        "output_root_dir",
-        os.path.join(REPO_ROOT, "results", "studio_runs"),
-    )
-    output_root_input = st.text_input(
-        "Output Folder",
-        value=default_output_root,
-        help=(
-            "All single runs and sweeps are saved in timestamped folders under this path. "
-            "Example: C:/LEWICE/runs or /data/lewice/runs"
-        ),
-    )
-    output_root_dir = os.path.abspath(os.path.expanduser(output_root_input.strip()))
-    st.session_state["output_root_dir"] = output_root_dir
-    output_root_ok = True
-    try:
-        os.makedirs(output_root_dir, exist_ok=True)
-    except Exception as exc:
-        output_root_ok = False
-        st.error(f"Cannot create/use output folder: {output_root_dir} ({exc})")
-    else:
-        st.caption(f"Run outputs will be saved under: {output_root_dir}")
+    # Server-side temp root — results are delivered via browser download
+    output_root_dir = os.path.join(tempfile.gettempdir(), "lewice_studio")
+    os.makedirs(output_root_dir, exist_ok=True)
 
     run_disabled = (
         not exe_exists
-        or not output_root_ok
         or (
             airfoil_choice not in ("Upload Custom .xyd", "Custom Point Array (2-D shape)")
             and (not designation or not airfoil_is_valid)
@@ -786,6 +781,14 @@ with tab3:
                 st.session_state["last_run_dir"] = tmp_dir
                 st.session_state["last_run_xyd"] = xyd_path
                 _remember_run(tmp_dir, xyd_path)
+                zip_bytes = _zip_dir_to_bytes(tmp_dir)
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                st.download_button(
+                    "⬇ Download results (.zip)",
+                    data=zip_bytes,
+                    file_name=f"lewice_run_{ts}.zip",
+                    mime="application/zip",
+                )
             else:
                 st.error(f"LEWICE failed: {result.get('message', result.get('stderr', 'Unknown error'))}")
 
@@ -949,18 +952,28 @@ with tab3:
 
             # CSV download
             import csv
-            import io as _io
             csv_buf = _io.StringIO()
             writer = csv.DictWriter(csv_buf, fieldnames=list(last_results[0].keys()))
             writer.writeheader()
             for row in last_results:
                 writer.writerow(row)
-            st.download_button(
-                "Download sweep results (.csv)",
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            col_csv, col_zip = st.columns(2)
+            col_csv.download_button(
+                "\u2b07 Download summary (.csv)",
                 data=csv_buf.getvalue(),
-                file_name=f"lewice_sweep_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                file_name=f"lewice_sweep_{ts}.csv",
                 mime="text/csv",
             )
+            last_sweep_dir = st.session_state.get("last_sweep_dir")
+            if last_sweep_dir and os.path.isdir(last_sweep_dir):
+                zip_bytes = _zip_dir_to_bytes(last_sweep_dir)
+                col_zip.download_button(
+                    "\u2b07 Download all output files (.zip)",
+                    data=zip_bytes,
+                    file_name=f"lewice_sweep_{ts}.zip",
+                    mime="application/zip",
+                )
 
     st.divider()
     st.subheader("Ice Shape Visualization")

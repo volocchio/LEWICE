@@ -50,7 +50,7 @@ systemctl reload caddy
 if [ -x /usr/local/bin/sync-and-update-portal.sh ]; then
     /usr/local/bin/sync-and-update-portal.sh
 else
-    echo "Skipping portal sync: /usr/local/bin/sync-and-update-portal.sh not found"
+    echo 'Skipping portal sync (script not found)'
 fi
 "@
 
