@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 import json
 import os
 import sys
-import tempfile
 from datetime import datetime
 
 # Add studio to path
@@ -26,6 +25,7 @@ from reports.generator import build_report, build_pdf_report, _classify_ice, _as
 
 APP_DIR = os.path.dirname(__file__)
 REPO_ROOT = os.path.abspath(os.path.join(APP_DIR, ".."))
+CUSTOM_SHAPES_PATH = os.path.join(APP_DIR, "airfoils", "custom_shapes.json")
 
 _build_dt = datetime.fromtimestamp(os.path.getmtime(__file__))
 BUILD_STAMP = _build_dt.strftime("Build %Y-%m-%d %H:%M:%S")
@@ -92,6 +92,59 @@ def _remember_run(output_dir, xyd_path=None):
             "xyd_path": xyd_path,
         },
     )
+
+
+def _load_custom_shape_library(path=CUSTOM_SHAPES_PATH):
+    """Load named custom 2-D shape presets from JSON.
+
+    JSON format:
+      {
+        "Preset Name": [[x1, y1], [x2, y2], ...],
+        ...
+      }
+    """
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
+    except Exception:
+        return {}
+
+    presets = {}
+    if not isinstance(raw, dict):
+        return presets
+    for name, pts in raw.items():
+        if not isinstance(name, str) or not isinstance(pts, list):
+            continue
+        cleaned = []
+        for p in pts:
+            if not isinstance(p, (list, tuple)) or len(p) < 2:
+                continue
+            try:
+                cleaned.append((float(p[0]), float(p[1])))
+            except (TypeError, ValueError):
+                continue
+        if len(cleaned) >= 3:
+            presets[name] = cleaned
+    return presets
+
+
+def _points_to_text(points):
+    return "\n".join(f"{x:.6f} {y:.6f}" for x, y in points)
+
+
+def _new_output_subdir(root_dir, prefix):
+    """Create a timestamped output subdirectory under a user-selected root."""
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base = os.path.join(root_dir, f"{prefix}_{stamp}")
+    candidate = base
+    idx = 1
+    while os.path.exists(candidate):
+        candidate = f"{base}_{idx:02d}"
+        idx += 1
+    os.makedirs(candidate, exist_ok=False)
+    return candidate
 
 
 def _write_geometry_for_run(xyd_path, airfoil_choice, designation, custom_points, uploaded_xyd):
@@ -164,9 +217,10 @@ def _appendix_c_critical_points(envelope):
 
 
 def _run_sweep(cases, airfoil_choice, designation, custom_points, uploaded_xyd,
-               airfoil_label, chord_m, aoa_deg, speed_ktas, progress_cb=None):
+               airfoil_label, chord_m, aoa_deg, speed_ktas, output_root_dir,
+               progress_cb=None):
     """Run a list of icing cases sequentially and return a list of result dicts."""
-    sweep_dir = tempfile.mkdtemp(prefix="lewice_sweep_")
+    sweep_dir = _new_output_subdir(output_root_dir, "lewice_sweep")
     xyd_path = os.path.join(sweep_dir, "geometry.xyd")
     ok, msg = _write_geometry_for_run(xyd_path, airfoil_choice, designation,
                                       custom_points, uploaded_xyd)
@@ -304,7 +358,8 @@ airfoil_choice = st.sidebar.selectbox(
     ],
     help=(
         "Pick a stock airfoil, enter a NACA code, upload a .xyd file, or paste a "
-        "raw x,y point list. The point-array mode is intended for antenna fairings "
+        "raw x,y point list. The point-array mode includes a preset dropdown for "
+        "saved custom shapes and is intended for antenna fairings "
         "and other non-airfoil 2-D cross-sections."
     ),
 )
@@ -363,14 +418,36 @@ def _parse_point_array(text):
 
 
 if airfoil_choice == "Custom Point Array (2-D shape)":
+    custom_shape_library = _load_custom_shape_library()
+    preset_options = ["(none)"] + list(custom_shape_library.keys())
+    selected_preset = st.sidebar.selectbox(
+        "Load saved shape preset",
+        preset_options,
+        help=(
+            "Choose a preset from studio/airfoils/custom_shapes.json. Selecting a preset "
+            "loads its points into the editable text area below."
+        ),
+    )
+    if selected_preset != "(none)":
+        if st.session_state.get("last_loaded_shape_preset") != selected_preset:
+            st.session_state["custom_point_text"] = _points_to_text(custom_shape_library[selected_preset])
+            st.session_state["last_loaded_shape_preset"] = selected_preset
+            st.sidebar.success(f"Loaded preset: {selected_preset}")
+    else:
+        st.session_state["last_loaded_shape_preset"] = "(none)"
+
+    if not custom_shape_library:
+        st.sidebar.caption("No preset library loaded. Add studio/airfoils/custom_shapes.json to enable presets.")
+
     st.sidebar.caption(
         "Paste x y pairs (one per line). Coordinates should be in chord-normalized "
         "units (0..1 along x). LEWICE expects a closed loop traversed lower TE -> "
         "LE -> upper TE (same convention as .xyd)."
     )
+    if "custom_point_text" not in st.session_state:
+        st.session_state["custom_point_text"] = ""
     point_text = st.sidebar.text_area(
         "Point array (x  y per line)",
-        value=st.session_state.get("custom_point_text", ""),
         height=220,
         placeholder="1.0  0.0\n0.5  -0.05\n0.0   0.0\n0.5   0.05\n1.0   0.0",
         key="custom_point_text",
@@ -654,8 +731,32 @@ with tab3:
     else:
         st.error(f"LEWICE executable not found at expected path. Place lewice.exe in the LEWICE root directory.")
 
+    default_output_root = st.session_state.get(
+        "output_root_dir",
+        os.path.join(REPO_ROOT, "results", "studio_runs"),
+    )
+    output_root_input = st.text_input(
+        "Output Folder",
+        value=default_output_root,
+        help=(
+            "All single runs and sweeps are saved in timestamped folders under this path. "
+            "Example: C:/LEWICE/runs or /data/lewice/runs"
+        ),
+    )
+    output_root_dir = os.path.abspath(os.path.expanduser(output_root_input.strip()))
+    st.session_state["output_root_dir"] = output_root_dir
+    output_root_ok = True
+    try:
+        os.makedirs(output_root_dir, exist_ok=True)
+    except Exception as exc:
+        output_root_ok = False
+        st.error(f"Cannot create/use output folder: {output_root_dir} ({exc})")
+    else:
+        st.caption(f"Run outputs will be saved under: {output_root_dir}")
+
     run_disabled = (
         not exe_exists
+        or not output_root_ok
         or (
             airfoil_choice not in ("Upload Custom .xyd", "Custom Point Array (2-D shape)")
             and (not designation or not airfoil_is_valid)
@@ -665,7 +766,7 @@ with tab3:
     if st.button("Run Single Case", disabled=run_disabled, type="primary"):
         st.info("Running LEWICE... this typically takes 5-30 seconds per case.")
         with st.spinner("Simulating ice accretion..."):
-            tmp_dir = tempfile.mkdtemp(prefix="lewice_studio_")
+            tmp_dir = _new_output_subdir(output_root_dir, "lewice_single")
             inp_path = os.path.join(tmp_dir, "case.inp")
             xyd_path = os.path.join(tmp_dir, "case.xyd")
 
@@ -810,7 +911,8 @@ with tab3:
             sweep_started = datetime.now()
             results, sweep_dir = _run_sweep(
                 sweep_cases, airfoil_choice, designation, custom_points, uploaded_xyd,
-                airfoil_label, chord, aoa, speed_ktas, progress_cb=_cb,
+                airfoil_label, chord, aoa, speed_ktas, output_root_dir,
+                progress_cb=_cb,
             )
             elapsed = (datetime.now() - sweep_started).total_seconds()
             progress.progress(1.0, text=f"Sweep finished in {elapsed:.1f}s")
