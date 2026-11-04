@@ -1,0 +1,346 @@
+  enter input file name
+ =============================================================
+                                                              
+ This program is declared property of the U.S. government, 
+ NASA and the NASA Lewis Icing Branch. It is intended for use
+ in the United States by american corporations, universities,
+ and government agencies. Do not reproduce or distribute this
+ program or parts of the program or any written documentation 
+ without the expressed, written consent the NASA Lewis Icing 
+ Branch.
+                                                              
+ =============================================================
+
+
+ currently, the x-y coordinates which define each body
+ are not taken from the standard input file.
+ they are input from a separate file for each body.
+
+ enter file name for body 1
+ ddtime=   172.531851851852       0.914400000000000       5.400000000000000E-004
+   90.0000000000000     
+  leading edge diameter =   2.362219422631978E-002
+ time =    0.000
+
+ The potential flow field is now being calculated
+
+  jbod =            1
+ stagnation point selection below
+  0.3911567E-02 -0.1285483E-01
+ trajectory algorithm started
+
+  the particles are released from x = -0.64500E+01
+  which is obtained at the    1 loop of   50 loops
+ terminal velocity =   1.421872510963054E-004   20.0000000000000     
+
+  the particles of size   20.00 microns contain 1.0000 of the total mass
+
+
+  y0max= -0.6555E+00   y0min= -0.7856E+00
+
+ upper limit search
+ lower limit search
+
+      upper surface limit         lower surface limit
+       y0u            su           y0l            sl
+   -0.6651E+00    0.2041E-01   -0.6906E+00   -0.1434E+00
+
+  total collection efficiency etotc=  0.293956428766251     
+  y0u= -0.665100615471004       y0l= -0.690590010102159       thick=
+  8.671147196247968E-002
+ collection efficiency calculation
+ impingement limit panels nlow =           36  nhi =           55
+ stagnation point selection below
+  0.3848467E-02 -0.1285105E-01
+
+ The potential flow field is now being calculated
+
+ stagnation point selection below
+  0.3885148E-02 -0.1288806E-01
+ Ice accretion algorithm started
+  icorr =            0  ideice =            0
+  itherm =            0  ibleed =            0 ievap=            0
+  ihst =            0  ihnd =         5060  ihflag =            0
+ mass of water/unit span coming in this time step =   0.732022E-01 kg/m
+ Mass of ice/unit span freezing this time step =   0.463095E-01 kg/m
+ Mass of water/unit span evaporating this time step =   0.564103E-02 kg/m
+  Total iced area =   5.483040750014688E-005  Max. ice thickness = 
+  1.822923652931934E-003
+  Overall upper and lower icing limits
+  xlow =   8.535472034784181E-002  ylow =  -2.746549841517077E-002  slow = 
+ -9.356797545823425E-002
+  xhi =   5.956719963773976E-003  yhi =   7.741175795289991E-003  shi = 
+  1.359716325872773E-002
+
+  time step complete: time=    60.000
+
+
+ The potential flow field is now being calculated
+
+  jbod =            1
+ stagnation point selection below
+  0.3285573E-02 -0.1275002E-01
+ trajectory algorithm started
+
+  the particles are released from x = -0.64500E+01
+  which is obtained at the    1 loop of   50 loops
+ terminal velocity =   1.421872510963054E-004   20.0000000000000     
+
+  the particles of size   20.00 microns contain 1.0000 of the total mass
+
+
+  y0max= -0.6528E+00   y0min= -0.7829E+00
+
+ upper limit search
+ lower limit search
+
+      upper surface limit         lower surface limit
+       y0u            su           y0l            sl
+   -0.6647E+00    0.2044E-01   -0.6911E+00   -0.1526E+00
+
+  total collection efficiency etotc=  0.303981274366381     
+  y0u= -0.664704091433190       y0l= -0.691066722794839       thick=
+  8.672452412274162E-002
+ collection efficiency calculation
+ impingement limit panels nlow =           37  nhi =           57
+ stagnation point selection below
+  0.3266585E-02 -0.1276264E-01
+
+ The potential flow field is now being calculated
+
+ stagnation point selection below
+  0.3197895E-02 -0.1269084E-01
+ Ice accretion algorithm started
+  icorr =            0  ideice =            0
+  itherm =            0  ibleed =            0 ievap=            0
+  ihst =            0  ihnd =         5067  ihflag =            0
+ mass of water/unit span coming in this time step =   0.748138E-01 kg/m
+ Mass of ice/unit span freezing this time step =   0.470892E-01 kg/m
+ Mass of water/unit span evaporating this time step =   0.606491E-02 kg/m
+  Total iced area =   1.119696552847954E-004  Max. ice thickness = 
+  4.032664705744988E-003
+  Overall upper and lower icing limits
+  xlow =   0.106121427403406       ylow =  -2.873748664812469E-002  slow = 
+ -0.114373667373387     
+  xhi =   5.632357306350264E-003  yhi =   7.506841533503150E-003  shi = 
+  1.319700868886975E-002
+
+  time step complete: time=   120.000
+
+
+ The potential flow field is now being calculated
+
+  jbod =            1
+ stagnation point selection below
+  0.2397341E-02 -0.1228751E-01
+ trajectory algorithm started
+
+  the particles are released from x = -0.64500E+01
+  which is obtained at the    1 loop of   50 loops
+ terminal velocity =   1.421872510963054E-004   20.0000000000000     
+
+  the particles of size   20.00 microns contain 1.0000 of the total mass
+
+
+  y0max= -0.6538E+00   y0min= -0.7839E+00
+
+ upper limit search
+ lower limit search
+
+      upper surface limit         lower surface limit
+       y0u            su           y0l            sl
+   -0.6641E+00    0.2145E-01   -0.6906E+00   -0.1518E+00
+
+  total collection efficiency etotc=  0.305013298988342     
+  y0u= -0.664137552065277       y0l= -0.690591070865631       thick=
+  8.672906685739240E-002
+ collection efficiency calculation
+ impingement limit panels nlow =           37  nhi =           58
+ stagnation point selection below
+  0.2414519E-02 -0.1230850E-01
+
+ The potential flow field is now being calculated
+
+ stagnation point selection below
+  0.2307082E-02 -0.1217795E-01
+ Ice accretion algorithm started
+  icorr =            0  ideice =            0
+  itherm =            0  ibleed =            0 ievap=            0
+  ihst =            0  ihnd =         5075  ihflag =            0
+ mass of water/unit span coming in this time step =   0.758010E-01 kg/m
+ Mass of ice/unit span freezing this time step =   0.477531E-01 kg/m
+ Mass of water/unit span evaporating this time step =   0.618524E-02 kg/m
+  Total iced area =   1.687678371307524E-004  Max. ice thickness = 
+  6.483117056071877E-003
+  Overall upper and lower icing limits
+  xlow =   0.107719019899578       ylow =  -2.882889775458128E-002  slow = 
+ -0.115973872929106     
+  xhi =   6.287748332340726E-003  yhi =   7.966516239442126E-003  shi = 
+  1.399761062926053E-002
+
+  time step complete: time=   180.000
+
+
+ The potential flow field is now being calculated
+
+  jbod =            1
+ stagnation point selection below
+  0.1731021E-02 -0.1189879E-01
+ trajectory algorithm started
+
+  the particles are released from x = -0.64500E+01
+  which is obtained at the    1 loop of   50 loops
+ terminal velocity =   1.421872510963054E-004   20.0000000000000     
+
+  the particles of size   20.00 microns contain 1.0000 of the total mass
+
+
+  y0max= -0.6525E+00   y0min= -0.7826E+00
+
+ upper limit search
+ lower limit search
+
+      upper surface limit         lower surface limit
+       y0u            su           y0l            sl
+   -0.6630E+00    0.2186E-01   -0.6903E+00   -0.1703E+00
+
+  total collection efficiency etotc=  0.314553648233414     
+  y0u= -0.663008255591028       y0l= -0.690288359181855       thick=
+  8.672639387283068E-002
+ collection efficiency calculation
+ impingement limit panels nlow =           36  nhi =           59
+ stagnation point selection below
+  0.1745523E-02 -0.1194423E-01
+
+ The potential flow field is now being calculated
+
+ stagnation point selection below
+  0.1839702E-02 -0.1206845E-01
+ Ice accretion algorithm started
+  icorr =            0  ideice =            0
+  itherm =            0  ibleed =            0 ievap=            0
+  ihst =            0  ihnd =         5087  ihflag =            0
+ mass of water/unit span coming in this time step =   0.766754E-01 kg/m
+ Mass of ice/unit span freezing this time step =   0.504107E-01 kg/m
+ Mass of water/unit span evaporating this time step =   0.667280E-02 kg/m
+  Total iced area =   2.184868823551986E-004  Max. ice thickness = 
+  8.887236913826330E-003
+  Overall upper and lower icing limits
+  xlow =   0.106121427403406       ylow =  -2.873748664812469E-002  slow = 
+ -0.114373667373387     
+  xhi =   6.624640888554133E-003  yhi =   8.183452702305909E-003  shi = 
+  1.439830755132498E-002
+
+  time step complete: time=   240.000
+
+
+ The potential flow field is now being calculated
+
+  jbod =            1
+ stagnation point selection below
+  0.8721293E-03 -0.1121830E-01
+ trajectory algorithm started
+
+  the particles are released from x = -0.64500E+01
+  which is obtained at the    1 loop of   50 loops
+ terminal velocity =   1.421872510963054E-004   20.0000000000000     
+
+  the particles of size   20.00 microns contain 1.0000 of the total mass
+
+
+  y0max= -0.6503E+00   y0min= -0.7804E+00
+
+ upper limit search
+ lower limit search
+
+      upper surface limit         lower surface limit
+       y0u            su           y0l            sl
+   -0.6621E+00    0.2185E-01   -0.6904E+00   -0.1740E+00
+
+  total collection efficiency etotc=  0.327310770750044     
+  y0u= -0.662056773273831       y0l= -0.690444902015564       thick=
+  8.673142248475781E-002
+ collection efficiency calculation
+ impingement limit panels nlow =           36  nhi =           59
+ stagnation point selection below
+  0.8931977E-03 -0.1126092E-01
+
+ The potential flow field is now being calculated
+
+ stagnation point selection below
+  0.1092831E-02 -0.1154637E-01
+ Ice accretion algorithm started
+  icorr =            0  ideice =            0
+  itherm =            0  ibleed =            0 ievap=            0
+  ihst =            0  ihnd =         5100  ihflag =            0
+ mass of water/unit span coming in this time step =   0.800905E-01 kg/m
+ Mass of ice/unit span freezing this time step =   0.519271E-01 kg/m
+ Mass of water/unit span evaporating this time step =   0.689323E-02 kg/m
+  Total iced area =   2.680610380072613E-004  Max. ice thickness = 
+  1.147462245298811E-002
+  Overall upper and lower icing limits
+  xlow =   0.100529784639999       ylow =  -2.841139814729760E-002  slow = 
+ -0.108772523724565     
+  xhi =   5.956719963773976E-003  yhi =   7.741175795289991E-003  shi = 
+  1.359716325872773E-002
+
+  time step complete: time=   300.000
+
+
+ The potential flow field is now being calculated
+
+  jbod =            1
+ stagnation point selection below
+  0.1159066E-03 -0.1061449E-01
+ trajectory algorithm started
+
+  the particles are released from x = -0.64500E+01
+  which is obtained at the    1 loop of   50 loops
+ terminal velocity =   1.421872510963054E-004   20.0000000000000     
+
+  the particles of size   20.00 microns contain 1.0000 of the total mass
+
+
+  y0max= -0.6515E+00   y0min= -0.7816E+00
+
+ upper limit search
+ lower limit search
+
+      upper surface limit         lower surface limit
+       y0u            su           y0l            sl
+   -0.6614E+00    0.2392E-01   -0.6903E+00   -0.1741E+00
+
+  total collection efficiency etotc=  0.332439959049224     
+  y0u= -0.661425855916596       y0l= -0.690261406116162       thick=
+  8.673912210203580E-002
+ collection efficiency calculation
+ impingement limit panels nlow =           36  nhi =           59
+ stagnation point selection below
+  0.7143265E-04 -0.1056021E-01
+
+ The potential flow field is now being calculated
+
+ stagnation point selection below
+ -0.4346457E-03 -0.9917739E-02
+ Ice accretion algorithm started
+  icorr =            0  ideice =            0
+  itherm =            0  ibleed =            0 ievap=            0
+  ihst =            0  ihnd =         5113  ihflag =            0
+ mass of water/unit span coming in this time step =   0.805868E-01 kg/m
+ Mass of ice/unit span freezing this time step =   0.511770E-01 kg/m
+ Mass of water/unit span evaporating this time step =   0.681078E-02 kg/m
+  Total iced area =   3.163385036341615E-004  Max. ice thickness = 
+  1.400246650636270E-002
+  Overall upper and lower icing limits
+  xlow =   0.103325626463973       ylow =  -2.857564797793220E-002  slow = 
+ -0.111573186144534     
+  xhi =   5.956719963773976E-003  yhi =   7.741175795289991E-003  shi = 
+  1.359716325872773E-002
+
+  time step complete: time=   360.000
+
+
+ The potential flow field is now being calculated
+
+  
+  Run Time =   0.6484375    

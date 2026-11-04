@@ -1,12 +1,17 @@
-﻿"""
+"""
 LEWICE Studio — Certification Report Generator
 Produces FAA-style PowerPoint (.pptx) reports with ice shapes,
 conditions summary, impingement limits, and risk assessment.
 """
 import os
 import io
+import sys
 import tempfile
 import datetime
+
+_STUDIO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _STUDIO_DIR not in sys.path:
+    sys.path.insert(0, _STUDIO_DIR)
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
@@ -26,6 +31,8 @@ from reportlab.platypus import (
     Image as RLImage,
     PageBreak,
 )
+
+from lewice_engine.plots import configure_equal_axes, leading_edge_points
 
 # ── Brand Colors ──
 NAVY       = RGBColor(0x0B, 0x1A, 0x2E)
@@ -138,7 +145,11 @@ def generate_ice_shape_image(clean_coords, ice_coords, title="", width_px=900, h
             iy = [p[1] for p in ice_coords]
             ax.plot(ix, iy, color='#C8A84E', linewidth=2.0, label='Iced Airfoil')
 
-        ax.set_aspect('equal')
+        frame = list(clean_coords or []) + list(ice_coords or [])
+        if frame:
+            configure_equal_axes(ax, frame, title="")
+        else:
+            ax.set_aspect('equal', adjustable='box')
         ax.set_xlabel('x/c', color='#CCCCCC', fontsize=9)
         ax.set_ylabel('y/c', color='#CCCCCC', fontsize=9)
         ax.tick_params(colors='#888888', labelsize=8)
@@ -153,7 +164,7 @@ def generate_ice_shape_image(clean_coords, ice_coords, title="", width_px=900, h
         ax.grid(True, alpha=0.15, color='#666666')
 
         buf = io.BytesIO()
-        fig.savefig(buf, format='png', facecolor=fig.get_facecolor())
+        fig.savefig(buf, format='png', bbox_inches='tight', facecolor=fig.get_facecolor())
         plt.close(fig)
         buf.seek(0)
         return buf
@@ -183,10 +194,13 @@ def generate_le_detail_image(clean_coords, ice_coords, title="Leading Edge Detai
             ax.plot(ix, iy, color='#C8A84E', linewidth=2.5, label='Iced Airfoil')
             ax.fill(ix, iy, color='#C8A84E', alpha=0.15)
 
-        # Slightly wider window so LE shape is easier to read on slides.
-        ax.set_xlim(-0.08, 0.30)
-        ax.set_ylim(-0.12, 0.12)
-        ax.set_aspect('equal')
+        # Fit the nose and any horn, instead of a fixed window that clips
+        # glaze horns forward of x/c = -0.08 or off a cambered section.
+        frame = leading_edge_points(clean_coords, ice_coords)
+        if frame:
+            configure_equal_axes(ax, frame, title="")
+        else:
+            ax.set_aspect('equal', adjustable='box')
         ax.set_xlabel('x/c', color='#CCCCCC', fontsize=9)
         ax.set_ylabel('y/c', color='#CCCCCC', fontsize=9)
         ax.tick_params(colors='#888888', labelsize=8)
@@ -457,7 +471,7 @@ def build_report(
         title=f"{airfoil_name} — {ice_type} Ice at {temp_c} C, {lwc} g/m3, {mvd} um MVD"
     )
     if img_buf:
-        slide.shapes.add_picture(img_buf, Inches(0.5), Inches(1.3), Inches(12.3))
+        _add_picture_preserve_aspect(slide, img_buf, 0.5, 1.3, 12.3, 5.6)
     else:
         _add_textbox(slide, 2, 3, 8, 1, "[Ice shape plot — install matplotlib for images]",
                      font_size=16, color=TEXT_GRAY, alignment=PP_ALIGN.CENTER)
@@ -477,7 +491,7 @@ def build_report(
         title=f"LE Detail — Max Thickness: {max_thickness_mm:.1f} mm"
     )
     if le_buf:
-        slide.shapes.add_picture(le_buf, Inches(0.5), Inches(1.3), Inches(12.3), Inches(5.5))
+        _add_picture_preserve_aspect(slide, le_buf, 0.5, 1.3, 12.3, 5.6)
     else:
         _add_textbox(slide, 2, 3, 8, 1, "[LE detail plot — install matplotlib for images]",
                      font_size=16, color=TEXT_GRAY, alignment=PP_ALIGN.CENTER)
@@ -629,6 +643,20 @@ def build_report(
 def _chord_units(chord_m):
     chord_in = chord_m * 39.3700787402
     return chord_m, chord_in
+
+
+def _add_picture_preserve_aspect(slide, buf, left, top, max_width, max_height):
+    """Place a PNG on a slide without stretching it to the box."""
+    reader = ImageReader(buf)
+    iw, ih = reader.getSize()
+    buf.seek(0)
+    aspect = ih / float(iw) if iw else 1.0
+    width = max_width
+    height = width * aspect
+    if height > max_height:
+        height = max_height
+        width = height / aspect if aspect else max_width
+    slide.shapes.add_picture(buf, Inches(left), Inches(top), Inches(width), Inches(height))
 
 
 def _image_preserve_aspect(buf, max_width, max_height=None):

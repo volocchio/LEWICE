@@ -1,4 +1,4 @@
-﻿"""
+"""
 LEWICE Studio — Streamlit App
 Modern UI for NASA LEWICE aircraft icing simulation.
 No PhD in ice required.
@@ -21,9 +21,13 @@ from lewice_engine.input_builder import (
     build_case_from_friendly, build_input, write_input,
     celsius_to_kelvin, ktas_to_ms, altitude_to_pressure, DEFAULTS
 )
-from lewice_engine.output_parser import parse_clean_airfoil, parse_ice_shape, compute_ice_metrics
-from lewice_engine.runner import run_lewice
-from airfoils.naca_library import naca4, write_xyd, COMMON_AIRFOILS
+from lewice_engine.output_parser import (
+    parse_clean_airfoil, parse_ice_shape, parse_beta, parse_htc,
+    parse_xy_text, analyze_case,
+)
+from lewice_engine.runner import run_lewice, probe_lewice
+from lewice_engine.plots import apply_equal_scale, leading_edge_points
+from airfoils.naca_library import naca4, write_xyd, COMMON_AIRFOILS, naca_camber_kind
 from reports.generator import build_report, build_pdf_report, _classify_ice, _assess_risk
 
 APP_DIR = os.path.dirname(__file__)
@@ -57,20 +61,79 @@ st.caption(f"{BUILD_STAMP} | source: studio/app.py")
 st.sidebar.caption(BUILD_STAMP)
 
 
+EXAMPLE1_DIR = os.path.join(APP_DIR, "examples", "case1")
+
+# NASA LEWICE distribution Example 1 (Inputs/case1.inp): a warm glaze case on
+# the supplied NACA 0012-family geometry. Pressure is the file's 100000 Pa,
+# which is not the ISA pressure at the sidebar's default altitude.
+DEMO_CASE = {
+    "airfoil_name": "LEWICE Example 1 geometry",
+    "chord_m": 0.9144,
+    "conditions": {
+        "speed_ktas": 90.0 / (1852.0 / 3600.0),
+        "speed_ms": 90.0,
+        "altitude_ft": None,
+        "pressure_pa": 100000.0,
+        "temp_c": 268.30 - 273.15,
+        "lwc": 0.54,
+        "mvd": 20.0,
+        "exposure_min": 6.0,
+        "aoa_deg": 4.5,
+    },
+}
+
+
 def _demo_sources():
-    demo_xyd = os.path.join(REPO_ROOT, "Inputs", "case1.xyd")
-    demo_ice_candidates = [
-        os.path.join(APP_DIR, "test_run", "case1", "final1.dat"),
-        os.path.join(REPO_ROOT, "results", "case22", "final1.dat"),
-    ]
-
-    demo_ice = None
-    for candidate in demo_ice_candidates:
-        if os.path.isfile(candidate):
-            demo_ice = candidate
-            break
-
+    demo_xyd = os.path.join(EXAMPLE1_DIR, "case.xyd")
+    if not os.path.isfile(demo_xyd):
+        demo_xyd = os.path.join(REPO_ROOT, "Inputs", "case1.xyd")
+    demo_ice = os.path.join(EXAMPLE1_DIR, "final1.dat")
+    if not os.path.isfile(demo_ice):
+        demo_ice = None
     return demo_xyd, demo_ice
+
+
+def _current_inputs(airfoil_label, chord, aoa, speed_ktas, altitude_ft, temp_c, lwc, mvd, exposure_min):
+    return {
+        "airfoil": airfoil_label,
+        "chord_m": round(float(chord), 6),
+        "aoa_deg": float(aoa),
+        "speed_ktas": float(speed_ktas),
+        "altitude_ft": float(altitude_ft),
+        "temp_c": float(temp_c),
+        "lwc": float(lwc),
+        "mvd": float(mvd),
+        "exposure_min": float(exposure_min),
+    }
+
+
+def _inputs_differ(saved, current):
+    if not saved:
+        return False
+    for key, value in current.items():
+        other = saved.get(key)
+        if isinstance(value, float):
+            if other is None or abs(float(other) - value) > 1e-6:
+                return True
+        elif other != value:
+            return True
+    return False
+
+
+def _format_conditions(inputs):
+    if not inputs:
+        return ""
+    alt = inputs.get("altitude_ft")
+    alt_txt = "n/a" if alt is None else f"{float(alt):.0f} ft"
+    return (
+        f"{inputs.get('airfoil', '')}, chord {float(inputs.get('chord_m', 0)):.4f} m, "
+        f"AOA {float(inputs.get('aoa_deg', 0)):.1f}°, "
+        f"{float(inputs.get('speed_ktas', 0)):.1f} KTAS, {alt_txt}, "
+        f"{float(inputs.get('temp_c', 0)):.2f} °C, "
+        f"LWC {float(inputs.get('lwc', 0)):.3f} g/m³, "
+        f"MVD {float(inputs.get('mvd', 0)):.1f} µm, "
+        f"{float(inputs.get('exposure_min', 0)):.2f} min"
+    )
 
 
 def _remember_run(output_dir, xyd_path=None):
@@ -167,9 +230,12 @@ def _write_geometry_for_run(xyd_path, airfoil_choice, designation, custom_points
     elif airfoil_choice == "Upload Custom .xyd":
         if not uploaded_xyd:
             return False, "Upload a .xyd file first."
-        content = uploaded_xyd.getvalue().decode("utf-8")
-        with open(xyd_path, "w") as f:
-            f.write(content)
+        content = uploaded_xyd.getvalue().decode("utf-8", errors="replace")
+        coords, errors = parse_xy_text(content)
+        if len(coords) < 3:
+            detail = errors[0] if errors else "no numeric x,y rows"
+            return False, f"The uploaded file is not a usable geometry ({detail})."
+        write_xyd(xyd_path, coords)
         return True, "uploaded .xyd"
     else:
         if not designation:
@@ -290,6 +356,8 @@ def _run_sweep(cases, airfoil_choice, designation, custom_points, uploaded_xyd,
             "status": run_result.get("status"),
             "elapsed_s": run_result.get("elapsed_seconds"),
             "max_ice_mm": None,
+            "horn_deg": None,
+            "beta_max": None,
             "ice_type": _classify_ice(case.get("temp_c", -10),
                                       case.get("lwc", 0.5),
                                       case.get("mvd", 20)),
@@ -300,16 +368,25 @@ def _run_sweep(cases, airfoil_choice, designation, custom_points, uploaded_xyd,
         final_path = os.path.join(case_dir, "final1.dat")
         if run_result.get("status") == "success" and os.path.isfile(final_path):
             try:
-                ice_coords = parse_ice_shape(final_path)
-                if ice_coords:
-                    min_x_ice = min(c[0] for c in ice_coords)
-                    row["max_ice_mm"] = round(abs(min_x_ice) * chord_m * 1000, 2)
+                metrics = analyze_case(
+                    case_dir,
+                    clean_coords_cached,
+                    chord_m=chord_m,
+                    temp_c=case.get("temp_c"),
+                    log_text=run_result.get("stdout"),
+                )
+                if metrics.get("max_thickness_mm") is not None:
+                    row["max_ice_mm"] = round(metrics["max_thickness_mm"], 2)
                     risk_level, _ = _assess_risk(row["max_ice_mm"], row["ice_type"])
                     row["risk"] = risk_level
+                if metrics.get("horn_angle_deg") is not None:
+                    row["horn_deg"] = round(metrics["horn_angle_deg"], 1)
+                if metrics.get("beta_max") is not None:
+                    row["beta_max"] = round(metrics["beta_max"], 3)
             except Exception as exc:
                 row["status"] = f"parse_error: {exc}"
         elif run_result.get("status") != "success":
-            row["status"] = run_result.get("status", "error")
+            row["status"] = run_result.get("message") or run_result.get("status", "error")
 
         results.append(row)
         if progress_cb:
@@ -390,10 +467,18 @@ elif airfoil_choice == "Custom NACA Code":
     custom_naca = st.sidebar.text_input("NACA Code", value="23012", help="Examples: 2412, 4415, 23012")
     candidate = custom_naca.strip().upper().replace("NACA", "").replace("-", "").replace(" ", "")
     if re.fullmatch(r"\d{4}|\d{5}", candidate):
-        designation = candidate
-        airfoil_label = f"NACA {designation}"
-        if len(designation) == 5:
-            st.sidebar.caption("5-digit NACA camber line is approximate in this generator; thickness is exact.")
+        try:
+            kind = naca_camber_kind(candidate)
+        except ValueError as exc:
+            airfoil_is_valid = False
+            st.sidebar.error(str(exc))
+        else:
+            designation = candidate
+            airfoil_label = f"NACA {designation}"
+            if kind == "5-digit":
+                st.sidebar.caption("Standard 5-digit mean line. Thickness is the last two digits.")
+            elif kind == "5-digit-reflex":
+                st.sidebar.caption("Standard reflex 5-digit mean line. Thickness is the last two digits.")
     else:
         airfoil_is_valid = False
         st.sidebar.error("Enter a valid NACA code: 4 digits (e.g. 2412) or 5 digits (e.g. 23012).")
@@ -405,31 +490,6 @@ if airfoil_choice == "Upload Custom .xyd":
     uploaded_xyd = st.sidebar.file_uploader("Upload .xyd file", type=["xyd", "dat", "txt"])
 else:
     uploaded_xyd = None
-
-
-def _parse_point_array(text):
-    """Parse free-form x,y point input. Accepts space, comma, tab separators,
-    optional header lines, and ignores blanks/comments. Returns (coords, errors)."""
-    coords = []
-    errors = []
-    for lineno, raw in enumerate(text.splitlines(), start=1):
-        line = raw.strip()
-        if not line or line.startswith("#") or line.startswith("//"):
-            continue
-        # normalize separators
-        cleaned = line.replace(",", " ").replace("\t", " ")
-        parts = cleaned.split()
-        if len(parts) < 2:
-            errors.append(f"line {lineno}: need at least 2 numbers, got '{raw}'")
-            continue
-        try:
-            x = float(parts[0])
-            y = float(parts[1])
-        except ValueError:
-            errors.append(f"line {lineno}: not numeric -> '{raw}'")
-            continue
-        coords.append((x, y))
-    return coords, errors
 
 
 if airfoil_choice == "Custom Point Array (2-D shape)":
@@ -459,6 +519,20 @@ if airfoil_choice == "Custom Point Array (2-D shape)":
         "units (0..1 along x). LEWICE expects a closed loop traversed lower TE -> "
         "LE -> upper TE (same convention as .xyd)."
     )
+    pts_uploaded = st.sidebar.file_uploader(
+        "...or upload a CSV/TXT of points",
+        type=["csv", "txt", "dat", "xyd"],
+        key="custom_point_upload",
+    )
+    if pts_uploaded is not None:
+        file_id = (pts_uploaded.name, pts_uploaded.size)
+        if st.session_state.get("custom_point_upload_id") != file_id:
+            try:
+                st.session_state["custom_point_text"] = pts_uploaded.getvalue().decode("utf-8", errors="replace")
+                st.session_state["custom_point_upload_id"] = file_id
+            except Exception as exc:
+                st.sidebar.error(f"Could not read uploaded file: {exc}")
+
     if "custom_point_text" not in st.session_state:
         st.session_state["custom_point_text"] = ""
     point_text = st.sidebar.text_area(
@@ -467,18 +541,8 @@ if airfoil_choice == "Custom Point Array (2-D shape)":
         placeholder="1.0  0.0\n0.5  -0.05\n0.0   0.0\n0.5   0.05\n1.0   0.0",
         key="custom_point_text",
     )
-    pts_uploaded = st.sidebar.file_uploader(
-        "...or upload a CSV/TXT of points",
-        type=["csv", "txt", "dat", "xyd"],
-        key="custom_point_upload",
-    )
-    if pts_uploaded is not None:
-        try:
-            point_text = pts_uploaded.getvalue().decode("utf-8", errors="ignore")
-        except Exception as exc:
-            st.sidebar.error(f"Could not read uploaded file: {exc}")
 
-    parsed_coords, parse_errors = _parse_point_array(point_text or "")
+    parsed_coords, parse_errors = parse_xy_text(point_text or "")
     if parse_errors:
         airfoil_is_valid = False
         st.sidebar.error(
@@ -528,14 +592,14 @@ envelope_mode = st.sidebar.radio(
         "lower LWC, longer exposure) — used for the long-duration hold case.\n"
         "  • *Intermittent Maximum* (cumuliform clouds, ~2.6 nm horizontal extent, "
         "higher LWC, shorter exposure) — used for the worst-case short encounter.\n\n"
-        "**Custom Batch** — user-defined list of cases (UI placeholder for now)."
+        "**Custom Batch** — edit a table of cases and run them on this page."
     ),
 )
 
 MODE_HELP = {
     "Single Condition": "Run one LEWICE case using the exact LWC, MVD, and exposure values set below.",
     "Appendix C Envelope": "Preview and run against the FAA Appendix C standard condition set for certification-style sweeps.",
-    "Custom Batch": "Run multiple user-defined cases as a batch. Right now this is a planning mode label; batch execution UI is not wired in this page yet.",
+    "Custom Batch": "Run the cases in the table on the Run & Results tab. Blank cells are dropped; each remaining row is one LEWICE case.",
 }
 st.sidebar.caption(MODE_HELP[envelope_mode])
 
@@ -588,13 +652,12 @@ with tab1:
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines", name="Clean Airfoil",
                                  line=dict(color="#1a73e8", width=2)))
+        apply_equal_scale(fig, coords, uirevision=f"preview-{airfoil_label}-{len(coords)}")
         fig.update_layout(
-            xaxis_title="x/c", yaxis_title="y/c",
-            yaxis=dict(scaleanchor="x", scaleratio=1),
-            height=400, margin=dict(l=40, r=40, t=30, b=40),
-            title=f"{airfoil_label} — {len(coords)} points"
+            margin=dict(l=40, r=40, t=40, b=40),
+            title=f"{airfoil_label} — {len(coords)} points",
         )
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, width="stretch", config={"scrollZoom": True})
 
         col1, col2, col3 = st.columns(3)
         col1.metric("Points", len(coords))
@@ -614,13 +677,15 @@ with tab1:
                 line=dict(color="#C8A84E", width=2),
                 marker=dict(size=4),
             ))
+            apply_equal_scale(
+                fig, custom_points, x_title="x/c", y_title="y/c",
+                uirevision=f"custom-{len(custom_points)}-{custom_points[0]}",
+            )
             fig.update_layout(
-                xaxis_title="x", yaxis_title="y",
-                yaxis=dict(scaleanchor="x", scaleratio=1),
-                height=400, margin=dict(l=40, r=40, t=30, b=40),
+                margin=dict(l=40, r=40, t=40, b=40),
                 title=f"{airfoil_label}",
             )
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="stretch", config={"scrollZoom": True})
 
             x_min, x_max = min(x_vals), max(x_vals)
             y_min, y_max = min(y_vals), max(y_vals)
@@ -642,23 +707,28 @@ with tab1:
             st.info("Paste a point array in the sidebar to preview the 2-D shape.")
     else:
         if uploaded_xyd:
-            content = uploaded_xyd.read().decode("utf-8")
-            coords = []
-            for line in content.strip().split("\n"):
-                parts = line.split()
-                if len(parts) >= 2:
-                    try:
-                        coords.append((float(parts[0]), float(parts[1])))
-                    except ValueError:
-                        pass
-            x_vals = [c[0] for c in coords]
-            y_vals = [c[1] for c in coords]
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines",
-                                     line=dict(color="#1a73e8", width=2)))
-            fig.update_layout(yaxis=dict(scaleanchor="x", scaleratio=1), height=400)
-            st.plotly_chart(fig, width="stretch")
-            st.metric("Points", len(coords))
+            content = uploaded_xyd.getvalue().decode("utf-8", errors="replace")
+            coords, errors = parse_xy_text(content)
+            if len(coords) < 3:
+                st.error("Could not read at least 3 x,y points from that file.")
+                if errors:
+                    st.caption(errors[0])
+            else:
+                x_vals = [c[0] for c in coords]
+                y_vals = [c[1] for c in coords]
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines",
+                                         line=dict(color="#1a73e8", width=2)))
+                apply_equal_scale(fig, coords, uirevision=f"upload-{len(coords)}")
+                fig.update_layout(margin=dict(l=40, r=40, t=40, b=40), title="Uploaded geometry")
+                st.plotly_chart(fig, width="stretch", config={"scrollZoom": True})
+                st.metric("Points", len(coords))
+                x_span = max(x_vals) - min(x_vals)
+                if x_span < 0.5 or x_span > 2.0 or min(x_vals) < -0.2 or max(x_vals) > 1.5:
+                    st.warning(
+                        "These coordinates are not near a 0–1 chord. LEWICE treats the "
+                        "file as chord-normalized (x/c, y/c). Scale the shape onto a unit chord before running."
+                    )
         else:
             st.info("Upload a .xyd file to preview the airfoil geometry.")
     if airfoil_choice != "Upload Custom .xyd" and (not designation or not airfoil_is_valid):
@@ -685,6 +755,15 @@ with tab2:
     col2.metric("Temperature (K)", f"{params['TINF']:.1f}")
     col3.metric("Pressure (Pa)", f"{params['PINF']:.0f}")
     col4.metric("Exposure (s)", f"{params['TSTOP']:.0f}")
+    st.caption(
+        f"Written for LEWICE as chord {params['CHORD']:.4f} m, "
+        f"V {params['VINF']:.2f} m/s, T {params['TINF']:.2f} K, "
+        f"P {params['PINF']:.0f} Pa, LWC {params['LWC']:.3f} g/m³, "
+        f"MVD {params['DPD']:.1f} µm. "
+        f"IFLO = {int(params['IFLO'])} icing updates "
+        f"(about {params['TSTOP'] / max(int(params['IFLO']), 1):.0f} s each). "
+        "IFLO is the number of flow updates, not a solver switch. NPL stays 24, as in the LEWICE examples."
+    )
 
     if envelope_mode == "Appendix C Envelope":
         with st.expander("What is the Appendix C envelope?", expanded=False):
@@ -738,28 +817,31 @@ with tab3:
         icon="ℹ️",
     )
 
-    lewice_exe = os.path.join(os.path.dirname(__file__), "..", "lewice.exe")
-    exe_exists = os.path.isfile(os.path.abspath(lewice_exe))
-
-    if exe_exists:
-        st.success(f"LEWICE executable found: lewice.exe")
+    runtime = probe_lewice()
+    if runtime["ok"]:
+        st.success(runtime["message"])
     else:
-        st.error(f"LEWICE executable not found at expected path. Place lewice.exe in the LEWICE root directory.")
+        st.error(runtime["message"])
 
     # Server-side temp root — results are delivered via browser download
     output_root_dir = os.path.join(tempfile.gettempdir(), "lewice_studio")
     os.makedirs(output_root_dir, exist_ok=True)
 
+    sidebar_inputs = _current_inputs(
+        airfoil_label, chord, aoa, speed_ktas, altitude_ft, temp_c, lwc, mvd, exposure_min
+    )
+
     run_disabled = (
-        not exe_exists
+        not runtime["ok"]
         or (
             airfoil_choice not in ("Upload Custom .xyd", "Custom Point Array (2-D shape)")
             and (not designation or not airfoil_is_valid)
         )
         or (airfoil_choice == "Custom Point Array (2-D shape)" and (not custom_points or not airfoil_is_valid))
+        or (airfoil_choice == "Upload Custom .xyd" and uploaded_xyd is None)
     )
     if st.button("Run Single Case", disabled=run_disabled, type="primary"):
-        st.info("Running LEWICE... this typically takes 5-30 seconds per case.")
+        st.info("Running LEWICE... a single case is usually a few seconds, longer when IFLO is high.")
         with st.spinner("Simulating ice accretion..."):
             tmp_dir = _new_output_subdir(output_root_dir, "lewice_single")
             inp_path = os.path.join(tmp_dir, "case.inp")
@@ -777,20 +859,30 @@ with tab3:
             result = run_lewice(inp_path, xyd_path, work_dir=tmp_dir)
 
             if result["status"] == "success":
-                st.success(f"LEWICE completed in {result['elapsed_seconds']}s")
+                st.success(result.get("message") or f"LEWICE completed in {result['elapsed_seconds']}s")
                 st.session_state["last_run_dir"] = tmp_dir
                 st.session_state["last_run_xyd"] = xyd_path
+                st.session_state["last_run"] = {
+                    "output_dir": tmp_dir,
+                    "xyd_path": xyd_path,
+                    "inputs": sidebar_inputs,
+                    "airfoil_label": airfoil_label,
+                }
                 _remember_run(tmp_dir, xyd_path)
-                zip_bytes = _zip_dir_to_bytes(tmp_dir)
                 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                st.download_button(
-                    "⬇ Download results (.zip)",
-                    data=zip_bytes,
-                    file_name=f"lewice_run_{ts}.zip",
-                    mime="application/zip",
-                )
+                st.session_state["last_zip_bytes"] = _zip_dir_to_bytes(tmp_dir)
+                st.session_state["last_zip_name"] = f"lewice_run_{ts}.zip"
             else:
-                st.error(f"LEWICE failed: {result.get('message', result.get('stderr', 'Unknown error'))}")
+                st.error(result.get("message") or result.get("stderr") or "LEWICE failed.")
+
+    if st.session_state.get("last_zip_bytes"):
+        st.download_button(
+            "Download results (.zip)",
+            data=st.session_state["last_zip_bytes"],
+            file_name=st.session_state.get("last_zip_name", "lewice_run.zip"),
+            mime="application/zip",
+            key="download_single_zip",
+        )
 
     # ---------- Envelope / Batch Sweep ----------
     st.divider()
@@ -856,8 +948,8 @@ with tab3:
 
         else:  # Custom Batch
             st.caption(
-                "Edit the table below — one row per case. Blank cells use sidebar defaults. "
-                "Add or remove rows with the +/- controls."
+                "Edit the table below — one row per case. A row is skipped if temperature, "
+                "LWC, MVD, or exposure is empty. Speed and chord always come from the sidebar."
             )
             default_rows = st.session_state.get("custom_batch_rows") or [
                 {"temp_c": -10.0, "lwc": 0.54, "mvd": 20.0, "exposure_min": 6.0,
@@ -934,6 +1026,23 @@ with tab3:
                     st.session_state["last_run_dir"] = worst["output_dir"]
                     if os.path.isfile(worst_xyd):
                         st.session_state["last_run_xyd"] = worst_xyd
+                    worst_inputs = {
+                        "airfoil": airfoil_label,
+                        "chord_m": round(float(chord), 6),
+                        "aoa_deg": float(worst.get("AOA_deg", aoa)),
+                        "speed_ktas": float(speed_ktas),
+                        "altitude_ft": float(worst.get("altitude_ft", altitude_ft)),
+                        "temp_c": float(worst.get("temp_C", temp_c)),
+                        "lwc": float(worst.get("LWC_g_m3", lwc)),
+                        "mvd": float(worst.get("MVD_um", mvd)),
+                        "exposure_min": float(worst.get("exposure_min", exposure_min)),
+                    }
+                    st.session_state["last_run"] = {
+                        "output_dir": worst["output_dir"],
+                        "xyd_path": worst_xyd if os.path.isfile(worst_xyd) else None,
+                        "inputs": worst_inputs,
+                        "airfoil_label": airfoil_label,
+                    }
                     _remember_run(worst["output_dir"], worst_xyd if os.path.isfile(worst_xyd) else None)
                     st.success(
                         f"Sweep complete. Worst case: #{worst['#']} ({worst['family']}, "
@@ -978,39 +1087,78 @@ with tab3:
     st.divider()
     st.subheader("Ice Shape Visualization")
 
-    # Determine which data to show: last run > demo case 1 > clean only
+    # Latest run wins. Until then, show the shipped Example 1 result, labeled
+    # with Example 1's conditions rather than whatever is currently in the sidebar.
     demo_xyd, demo_ice = _demo_sources()
-    run_dir = st.session_state.get("last_run_dir", None)
+    run_record = st.session_state.get("last_run")
+    run_dir = None
+    if run_record and os.path.isfile(os.path.join(run_record.get("output_dir", ""), "final1.dat")):
+        run_dir = run_record["output_dir"]
 
     clean_plot = None
     ice_plot = None
     plot_title = ""
-    max_thick_display = 0.0
+    shown_inputs = None
+    shown_chord = chord
+    shown_dir = None
+    result_stale = False
 
-    if run_dir and os.path.isfile(os.path.join(run_dir, "final1.dat")):
-        # Show results from latest run
-        run_xyd = st.session_state.get("last_run_xyd", None)
+    if run_dir:
+        run_xyd = run_record.get("xyd_path")
         if run_xyd and os.path.isfile(run_xyd):
             clean_plot = parse_clean_airfoil(run_xyd)
         ice_plot = parse_ice_shape(os.path.join(run_dir, "final1.dat"))
-        plot_title = "LEWICE Run Result — Ice Shape Overlay"
-        st.caption("Showing results from latest LEWICE run.")
+        shown_inputs = run_record.get("inputs") or {}
+        shown_chord = float(shown_inputs.get("chord_m", chord))
+        shown_dir = run_dir
+        plot_title = "LEWICE run — ice shape"
+        result_stale = _inputs_differ(shown_inputs, sidebar_inputs)
+        st.caption("Showing the latest LEWICE run: " + _format_conditions(shown_inputs))
+        if result_stale:
+            st.warning(
+                "The sidebar has changed since this run. Thickness, ice type, and the "
+                "shape below still belong to the completed run. Run again to update them."
+            )
     elif demo_ice and os.path.isfile(demo_ice) and os.path.isfile(demo_xyd):
-        # Show demo Case 1 data
         clean_plot = parse_clean_airfoil(demo_xyd)
         ice_plot = parse_ice_shape(demo_ice)
-        plot_title = "Demo — NASA Case 1 Validation (AOA 4.5, -4.85C, 0.54 g/m3, 20um)"
-        st.caption("Showing NASA LEWICE Case 1 validation data. Run your own case to replace.")
+        shown_inputs = DEMO_CASE["conditions"]
+        shown_chord = DEMO_CASE["chord_m"]
+        shown_dir = os.path.dirname(demo_ice)
+        plot_title = "Example 1 — glaze, AOA 4.5°, −4.85 °C, 0.54 g/m³, 20 µm, 360 s"
+        st.caption(
+            "Showing NASA LEWICE distribution Example 1 (not the sidebar). "
+            "Chord 0.9144 m, 90 m/s, 100000 Pa, TINF 268.30 K. Run a case to replace it."
+        )
     else:
-        # No ice data available — show clean airfoil only
         if airfoil_choice == "Custom Point Array (2-D shape)" and custom_points:
             clean_plot = list(custom_points)
         elif airfoil_choice != "Upload Custom .xyd" and designation and airfoil_is_valid:
-            clean_plot = naca4(designation, n_points=80)
-        plot_title = "Clean Airfoil (no ice data yet — run LEWICE or add demo data)"
-        st.caption("Run LEWICE to generate ice shape data.")
+            try:
+                clean_plot = naca4(designation, n_points=80)
+            except ValueError as exc:
+                st.warning(str(exc))
+        plot_title = "Clean airfoil — no ice shape yet"
+        st.caption("Run LEWICE to generate an ice shape. Example 1 output is not in this build.")
 
-    # Build the plot
+    case_metrics = {}
+    if shown_dir and ice_plot:
+        try:
+            case_metrics = analyze_case(
+                shown_dir,
+                clean_plot,
+                chord_m=shown_chord,
+                temp_c=None if not shown_inputs else shown_inputs.get("temp_c"),
+            )
+        except Exception as exc:
+            st.error(f"Could not read LEWICE outputs: {exc}")
+
+    dark = dict(
+        plot_bgcolor="#0B1A2E", paper_bgcolor="#0B1A2E",
+        font=dict(color="#CCCCCC"),
+        legend=dict(bgcolor="rgba(0,0,0,0)"),
+    )
+
     fig2 = go.Figure()
     if clean_plot:
         fig2.add_trace(go.Scatter(
@@ -1024,30 +1172,55 @@ with tab3:
             mode="lines", name="Iced Airfoil",
             line=dict(color="#C8A84E", width=2.5)
         ))
-        min_x_ice = min(c[0] for c in ice_plot)
-        max_thick_display = abs(min_x_ice) * chord * 1000
+    frame_pts = list(clean_plot or []) + list(ice_plot or [])
+    apply_equal_scale(fig2, frame_pts, uirevision=f"ice-{shown_dir}")
+    fig2.update_layout(title=plot_title, **dark)
+    st.plotly_chart(fig2, width="stretch", config={"scrollZoom": True})
 
-    fig2.update_layout(
-        xaxis_title="x/c", yaxis_title="y/c",
-        yaxis=dict(scaleanchor="x", scaleratio=1),
-        height=450, title=plot_title,
-        plot_bgcolor="#0B1A2E", paper_bgcolor="#0B1A2E",
-        font=dict(color="#CCCCCC"),
-        legend=dict(bgcolor="rgba(0,0,0,0)"),
-    )
-    st.plotly_chart(fig2, width="stretch")
-
-    # Metrics row
-    if ice_plot:
+    if ice_plot and shown_inputs:
+        max_thick_display = case_metrics.get("max_thickness_mm")
+        ice_type_run = _classify_ice(
+            shown_inputs.get("temp_c", temp_c),
+            shown_inputs.get("lwc", lwc),
+            shown_inputs.get("mvd", mvd),
+        )
+        risk_run, _ = _assess_risk(max_thick_display or 0.0)
         mc1, mc2, mc3, mc4 = st.columns(4)
-        ice_type_run = _classify_ice(temp_c, lwc, mvd)
-        risk_run, _ = _assess_risk(max_thick_display)
-        mc1.metric("Max Ice Thickness", f"{max_thick_display:.1f} mm")
-        mc2.metric("Ice Type", ice_type_run)
+        mc1.metric(
+            "Max Ice Thickness",
+            "n/a" if max_thick_display is None else f"{max_thick_display:.1f} mm",
+        )
+        mc2.metric("Screening ice type", ice_type_run)
         mc3.metric("Risk", risk_run)
-        mc4.metric("Ice Points", len(ice_plot))
+        horn = case_metrics.get("horn_angle_deg")
+        mc4.metric("Horn angle", "n/a" if horn is None else f"{horn:.0f}°")
+        st.caption(
+            "Max thickness is LEWICE ditot (ice height / chord) times the run chord, "
+            "when thick.dat is present. Horn angle is the direction from the clean "
+            "leading edge to the outermost nose point, measured from the chord-forward "
+            "axis (positive toward the upper surface). Screening ice type is a "
+            "temperature/LWC estimate, not the LEWICE freezing fraction."
+        )
+        if case_metrics.get("thickness_source"):
+            st.caption(f"Thickness source: {case_metrics['thickness_source']}.")
+        beta_max = case_metrics.get("beta_max")
+        imp = case_metrics.get("impingement")
+        c1, c2, c3 = st.columns(3)
+        if beta_max is not None:
+            c1.metric("Beta max", f"{beta_max:.3f}")
+            c1.caption(
+                f"at s/c = {case_metrics.get('beta_max_s'):.3f}"
+                if case_metrics.get("beta_max_s") is not None else ""
+            )
+        if imp and imp.get("upper"):
+            c2.metric("Upper limit x/c", f"{imp['upper']['x']:.3f}")
+            c2.caption(f"final step, s/c = {imp['upper']['s']:.3f}")
+        if imp and imp.get("lower"):
+            c3.metric("Lower limit x/c", f"{imp['lower']['x']:.3f}")
+            c3.caption(f"final step, s/c = {imp['lower']['s']:.3f}")
+        for note in case_metrics.get("warnings") or []:
+            st.warning(note)
 
-    # LE detail zoom
     if ice_plot and clean_plot:
         st.subheader("Leading Edge Detail")
         fig3 = go.Figure()
@@ -1058,28 +1231,50 @@ with tab3:
         fig3.add_trace(go.Scatter(
             x=[c[0] for c in ice_plot], y=[c[1] for c in ice_plot],
             mode="lines", name="Iced", line=dict(color="#C8A84E", width=2.5),
-            fill="toself", fillcolor="rgba(200,168,78,0.1)"
+            fill="toself", fillcolor="rgba(200,168,78,0.15)"
         ))
+        le_pts = leading_edge_points(clean_plot, ice_plot)
+        apply_equal_scale(fig3, le_pts, uirevision=f"le-{shown_dir}")
+        fig3.update_layout(title="Leading edge — equal scale", **dark)
+        st.plotly_chart(fig3, width="stretch", config={"scrollZoom": True})
 
-        # Auto-fit to encompass entire clean + iced shape with padding,
-        # so custom 2-D shapes (antenna fairings, etc.) are fully visible.
-        all_x = [c[0] for c in clean_plot] + [c[0] for c in ice_plot]
-        all_y = [c[1] for c in clean_plot] + [c[1] for c in ice_plot]
-        x_min, x_max = min(all_x), max(all_x)
-        y_min, y_max = min(all_y), max(all_y)
-        x_span = max(x_max - x_min, 1e-6)
-        y_span = max(y_max - y_min, 1e-6)
-        pad_x = 0.05 * x_span
-        pad_y = 0.10 * y_span
-
-        fig3.update_layout(
-            xaxis=dict(range=[x_min - pad_x, x_max + pad_x]),
-            yaxis=dict(range=[y_min - pad_y, y_max + pad_y], scaleanchor="x"),
-            height=400, title="Full Shape — Ice Accretion Detail",
-            plot_bgcolor="#0B1A2E", paper_bgcolor="#0B1A2E",
-            font=dict(color="#CCCCCC"), legend=dict(bgcolor="rgba(0,0,0,0)"),
-        )
-        st.plotly_chart(fig3, width="stretch")
+    if shown_dir:
+        beta_path = os.path.join(shown_dir, "beta.dat")
+        htc_path = os.path.join(shown_dir, "htc.dat")
+        if os.path.isfile(beta_path):
+            beta_blocks = parse_beta(beta_path)
+            if beta_blocks:
+                block = beta_blocks[-1]
+                fig_b = go.Figure()
+                fig_b.add_trace(go.Scatter(
+                    x=[r["s"] for r in block],
+                    y=[r["beta"] for r in block],
+                    mode="lines", name="beta",
+                    line=dict(color="#7FDBFF", width=2),
+                ))
+                fig_b.update_layout(
+                    title="Collection efficiency (final icing step)",
+                    xaxis_title="s/c", yaxis_title="beta",
+                    height=340, **dark,
+                )
+                st.plotly_chart(fig_b, width="stretch")
+        if os.path.isfile(htc_path):
+            htc_blocks = parse_htc(htc_path)
+            if htc_blocks:
+                block = htc_blocks[-1]
+                fig_h = go.Figure()
+                fig_h.add_trace(go.Scatter(
+                    x=[r["s"] for r in block],
+                    y=[r["htc"] for r in block],
+                    mode="lines", name="htc",
+                    line=dict(color="#C8A84E", width=2),
+                ))
+                fig_h.update_layout(
+                    title="Heat transfer coefficient (final icing step)",
+                    xaxis_title="s/c", yaxis_title="htc",
+                    height=340, **dark,
+                )
+                st.plotly_chart(fig_h, width="stretch")
 
 # ---- Tab 4: Report ----
 with tab4:
@@ -1098,21 +1293,27 @@ with tab4:
 
     st.divider()
 
-    # Risk preview
+    # Risk bands are thickness only. Ice type is a separate screening estimate.
     ice_type_preview = _classify_ice(temp_c, lwc, mvd)
-    st.markdown(f"**Predicted Ice Type:** `{ice_type_preview}`  |  "
-                f"**Temp:** {temp_c} C  |  **LWC:** {lwc} g/m3  |  **MVD:** {mvd} um")
+    st.markdown(
+        f"**Screening ice type (sidebar):** `{ice_type_preview}`  |  "
+        f"**Temp:** {temp_c} C  |  **LWC:** {lwc} g/m3  |  **MVD:** {mvd} um"
+    )
+    st.caption(
+        "The screening type is a temperature and LWC estimate. It is not the freezing "
+        "fraction from LEWICE. Risk bands below use thickness only."
+    )
 
     risk_col1, risk_col2, risk_col3 = st.columns(3)
     with risk_col1:
         st.markdown('<div class="risk-green">LOW RISK</div>', unsafe_allow_html=True)
-        st.caption("Rime ice, < 5 mm thickness")
+        st.caption("Thickness under 5 mm")
     with risk_col2:
         st.markdown('<div class="risk-yellow">MEDIUM RISK</div>', unsafe_allow_html=True)
-        st.caption("Mixed ice, 5-15 mm thickness")
+        st.caption("Thickness 5–15 mm")
     with risk_col3:
         st.markdown('<div class="risk-red">HIGH RISK</div>', unsafe_allow_html=True)
-        st.caption("Glaze ice, > 15 mm, horn formations")
+        st.caption("Thickness over 15 mm")
 
     st.divider()
 
@@ -1134,9 +1335,17 @@ with tab4:
     manual_output_dir = ""
 
     if data_source == "Latest LEWICE run":
-        if output_sources:
-            selected_source = output_sources[0]
-            st.info(f"Using: {selected_source['output_dir']}")
+        last = st.session_state.get("last_run")
+        if last and os.path.isfile(os.path.join(last.get("output_dir", ""), "final1.dat")):
+            selected_source = {
+                "label": "Latest LEWICE run",
+                "output_dir": last["output_dir"],
+                "final_path": os.path.join(last["output_dir"], "final1.dat"),
+                "xyd_path": last.get("xyd_path"),
+                "inputs": last.get("inputs"),
+                "airfoil_label": last.get("airfoil_label"),
+            }
+            st.info("Using the latest run: " + _format_conditions(last.get("inputs")))
         else:
             st.warning("No LEWICE run found yet. Run a case first or pick another source option.")
     elif data_source == "Pick from detected outputs":
@@ -1154,8 +1363,14 @@ with tab4:
                 "output_dir": os.path.dirname(demo_ice),
                 "final_path": demo_ice,
                 "xyd_path": demo_xyd,
+                "inputs": DEMO_CASE["conditions"],
+                "airfoil_label": DEMO_CASE["airfoil_name"],
+                "chord_m": DEMO_CASE["chord_m"],
             }
-            st.info(f"Using demo data from: {selected_source['output_dir']}")
+            st.info(
+                "Using LEWICE Example 1 (chord 0.9144 m, 90 m/s, −4.85 °C, "
+                "0.54 g/m³, 20 µm, 360 s, 100000 Pa). Sidebar values are not substituted."
+            )
         else:
             st.warning("Demo files are missing in this build. Use latest run or detected outputs.")
     else:
@@ -1196,31 +1411,47 @@ with tab4:
                 clean_coords = parse_clean_airfoil(selected_source["xyd_path"])
 
             ice_coords = parse_ice_shape(selected_source["final_path"])
-            min_x = min(c[0] for c in ice_coords)
-            max_thickness_mm = abs(min_x) * chord * 1000
+            if not ice_coords:
+                st.error("The ice-shape file has no coordinates.")
+                st.stop()
 
-            if data_source == "Demo Case":
-                impingement = {
-                    "upper": {"x": 0.003625, "y": 0.005619, "s": 0.020414},
-                    "lower": {"x": 0.145164, "y": -0.030770, "s": -0.143421},
-                }
+            report_inputs = selected_source.get("inputs") or {
+                "speed_ktas": speed_ktas,
+                "altitude_ft": altitude_ft,
+                "temp_c": temp_c,
+                "lwc": lwc,
+                "mvd": mvd,
+                "exposure_min": exposure_min,
+                "aoa_deg": aoa,
+            }
+            report_chord = float(selected_source.get("chord_m") or report_inputs.get("chord_m") or chord)
+            report_airfoil = selected_source.get("airfoil_label") or airfoil_label
+            if selected_source.get("inputs") is None and data_source != "Demo Case":
+                st.warning(
+                    "This folder has no saved flight conditions. The report uses the "
+                    "current sidebar values, which may not be the conditions that produced the shape."
+                )
 
             if clean_coords is None and airfoil_choice != "Upload Custom .xyd" and designation and airfoil_is_valid:
-                clean_coords = naca4(designation, n_points=80)
+                try:
+                    clean_coords = naca4(designation, n_points=80)
+                except ValueError:
+                    clean_coords = None
+
+            metrics = analyze_case(
+                selected_source["output_dir"],
+                clean_coords,
+                chord_m=report_chord,
+                temp_c=report_inputs.get("temp_c"),
+            )
+            max_thickness_mm = metrics.get("max_thickness_mm") or 0.0
+            impingement = metrics.get("impingement")
 
             report_kwargs = {
                 "project_name": project_name,
-                "airfoil_name": airfoil_label,
-                "chord_m": chord,
-                "conditions": {
-                    "speed_ktas": speed_ktas,
-                    "altitude_ft": altitude_ft,
-                    "temp_c": temp_c,
-                    "lwc": lwc,
-                    "mvd": mvd,
-                    "exposure_min": exposure_min,
-                    "aoa_deg": aoa,
-                },
+                "airfoil_name": report_airfoil,
+                "chord_m": report_chord,
+                "conditions": report_inputs,
                 "clean_coords": clean_coords,
                 "ice_coords": ice_coords,
                 "impingement_data": impingement,
@@ -1238,14 +1469,30 @@ with tab4:
                 report_ext = "pptx"
                 report_mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
-            risk_level, risk_desc = _assess_risk(max_thickness_mm)
-            st.success(f"Report generated!  Max thickness: {max_thickness_mm:.1f} mm  |  "
-                       f"Ice type: {ice_type_preview}  |  Risk: {risk_level}")
-
-            st.download_button(
-                label=f"Download Report (.{report_ext})",
-                data=report_buf,
-                file_name=f"LEWICE_Report_{project_name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{report_ext}",
-                mime=report_mime,
-                type="primary",
+            risk_level, _risk_desc = _assess_risk(max_thickness_mm)
+            report_type = _classify_ice(
+                report_inputs.get("temp_c", temp_c),
+                report_inputs.get("lwc", lwc),
+                report_inputs.get("mvd", mvd),
             )
+            st.session_state["report_bytes"] = report_buf.getvalue() if hasattr(report_buf, "getvalue") else report_buf
+            st.session_state["report_name"] = (
+                f"LEWICE_Report_{project_name.replace(' ', '_')}_"
+                f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.{report_ext}"
+            )
+            st.session_state["report_mime"] = report_mime
+            st.session_state["report_summary"] = (
+                f"Report generated. Max thickness: {max_thickness_mm:.1f} mm | "
+                f"Screening ice type: {report_type} | Risk: {risk_level}"
+            )
+
+    if st.session_state.get("report_bytes"):
+        st.success(st.session_state.get("report_summary", "Report ready."))
+        st.download_button(
+            label="Download report",
+            data=st.session_state["report_bytes"],
+            file_name=st.session_state.get("report_name", "LEWICE_Report.pptx"),
+            mime=st.session_state.get("report_mime", "application/octet-stream"),
+            type="primary",
+            key="download_report",
+        )
