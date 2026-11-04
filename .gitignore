@@ -3,6 +3,7 @@
 .venv/
 .env
 *.dat
+!studio/examples/**/*.dat
 studio/test_run/
 *.suo
 *.sln
