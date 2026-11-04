@@ -9,6 +9,10 @@ RUN dpkg --add-architecture i386 \
     && apt-get install -y --no-install-recommends wine64 wine32 \
     && rm -rf /var/lib/apt/lists/*
 
+# Debian 13 wine64/wine32 install the launchers in /usr/lib/wine only, so the
+# runner cannot find wine on PATH without this.
+ENV PATH="/usr/lib/wine:${PATH}"
+
 WORKDIR /app
 
 COPY studio/requirements.txt /tmp/requirements.txt
